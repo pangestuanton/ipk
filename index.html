@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator IP & IPK - Umum</title>
+    <link rel="stylesheet" href="style.css">
+
+
+</head>
+
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <h1>📊 Kalkulator IP & IPK</h1>
+                <p class="subtitle">Aplikasi universal untuk menghitung IP Semester dan IPK dari semua program studi</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-wrapper">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="nav-tabs">
+                    <button class="tab-btn active" data-tab="identitas">👤 Identitas</button>
+                    <button class="tab-btn" data-tab="mata-kuliah">📚 Mata Kuliah</button>
+                    <button class="tab-btn" data-tab="pengaturan">⚙️ Pengaturan</button>
+                    <button class="tab-btn" data-tab="hasil">📈 Hasil</button>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-content">
+                <!-- Tab: Identitas -->
+                <div id="identitas-tab" class="tab-content active">
+                    <div class="card">
+                        <h2>Data Diri Mahasiswa</h2>
+                        <p class="card-desc">Isi data ini secara opsional untuk keperluan dokumentasi</p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Nama Mahasiswa</label>
+                                <input type="text" id="namaMahasiswa" placeholder="Nama lengkap..." maxlength="100">
+                            </div>
+                            <div class="form-group">
+                                <label>NIM / NPM</label>
+                                <input type="text" id="nim" placeholder="Nomor induk..." maxlength="20">
+                            </div>
+                            <div class="form-group">
+                                <label>Program Studi</label>
+                                <input type="text" id="programStudi" placeholder="Contoh: Teknik Informatika..." maxlength="50">
+                            </div>
+                            <div class="form-group">
+                                <label>Semester</label>
+                                <input type="number" id="semester" placeholder="Contoh: 3" min="1" max="14">
+                            </div>
+                            <div class="form-group">
+                                <label>Nama Kampus / Universitas</label>
+                                <input type="text" id="namaKampus" placeholder="Nama kampus..." maxlength="100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data IPK Sebelumnya -->
+                    <div class="card">
+                        <h2>IPK & SKS Sebelumnya</h2>
+                        <p class="card-desc">Isi untuk menghitung IPK kumulatif. Kosongkan jika hanya menghitung IP semester ini</p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Total SKS Sebelumnya</label>
+                                <input type="number" id="sksSebelumnya" placeholder="0" min="0" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label>IPK Sebelumnya</label>
+                                <input type="number" id="ipkSebelumnya" placeholder="0.00" min="0" max="4" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Mata Kuliah -->
+                <div id="mata-kuliah-tab" class="tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Daftar Mata Kuliah Semester Ini</h2>
+                            <button class="btn btn-primary btn-sm" id="btnTambahMK">+ Tambah Mata Kuliah</button>
+                        </div>
+                        <p class="card-desc">Tambahkan, edit, atau hapus mata kuliah sesuai kebutuhan</p>
+
+                        <div id="mataKuliahContainer" class="courses-container">
+                            <!-- Mata kuliah akan dimuat di sini dengan JavaScript -->
+                        </div>
+
+                        <div class="empty-state" id="emptyState" style="display: none;">
+                            <p>📭 Belum ada mata kuliah. Klik tombol "Tambah Mata Kuliah" untuk memulai.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Pengaturan -->
+                <div id="pengaturan-tab" class="tab-content">
+                    <div class="card">
+                        <h2>Pengaturan Bobot Nilai</h2>
+                        <p class="card-desc">Sesuaikan bobot nilai sesuai dengan sistem kampus Anda</p>
+                        
+                        <div class="bobot-settings">
+                            <div id="bobotContainer"></div>
+                            <button class="btn btn-secondary" id="btnResetBobot">Reset ke Default</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Manajemen Data</h2>
+                        
+                        <div class="button-group">
+                            <button class="btn btn-secondary" id="btnSimpanData">💾 Simpan Data</button>
+                            <button class="btn btn-secondary" id="btnMuatData">📂 Muat Data Tersimpan</button>
+                            <button class="btn btn-danger" id="btnResetSemua">🗑️ Reset Semua Data</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Export & Print</h2>
+                        
+                        <div class="button-group">
+                            <button class="btn btn-secondary" id="btnPrint">🖨️ Print Hasil</button>
+                            <button class="btn btn-secondary" id="btnExportPDF">📄 Export PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Hasil -->
+                <div id="hasil-tab" class="tab-content">
+                    <div class="card">
+                        <h2>Ringkasan Perhitungan</h2>
+                        
+                        <div class="results-grid">
+                            <div class="result-card">
+                                <div class="result-label">Total SKS Semester Ini</div>
+                                <div class="result-value" id="hasilTotalSksSemester">0</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Total Mutu Semester Ini</div>
+                                <div class="result-value" id="hasilTotalMutuSemester">0.00</div>
+                            </div>
+                            <div class="result-card highlight">
+                                <div class="result-label">IP Semester Ini</div>
+                                <div class="result-value-large" id="hasilIPSemester">0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <div class="results-grid">
+                            <div class="result-card">
+                                <div class="result-label">Total SKS Kumulatif</div>
+                                <div class="result-value" id="hasilTotalSksKumulatif">0</div>
+                            </div>
+                            <div class="result-card">
+                                <div class="result-label">Total Mutu Kumulatif</div>
+                                <div class="result-value" id="hasilTotalMutuKumulatif">0.00</div>
+                            </div>
+                            <div class="result-card highlight">
+                                <div class="result-label">IPK Akhir</div>
+                                <div class="result-value-large" id="hasilIPK">0.00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Rumus Perhitungan</h2>
+                        <div class="formula-box">
+                            <p><strong>Mutu Mata Kuliah:</strong></p>
+                            <p class="formula">Mutu = SKS × Bobot Nilai</p>
+                            
+                            <p><strong>IP Semester:</strong></p>
+                            <p class="formula">IP Semester = Total Mutu Semester / Total SKS Semester</p>
+                            
+                            <p><strong>IPK (Indeks Prestasi Kumulatif):</strong></p>
+                            <p class="formula">IPK = Total Mutu Kumulatif / Total SKS Kumulatif</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal untuk Tambah/Edit Mata Kuliah -->
+    <div id="modalMK" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Tambah Mata Kuliah</h3>
+                <button class="close-btn">&times;</button>
+            </div>
+            <form id="formMK">
+                <div class="form-group">
+                    <label>Nama Mata Kuliah *</label>
+                    <input type="text" id="inputNamaMK" placeholder="Masukkan nama mata kuliah..." required maxlength="100">
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>SKS *</label>
+                        <input type="number" id="inputSKS" placeholder="1" min="1" max="24" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nilai Huruf *</label>
+                        <select id="inputNilai" required></select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="btnBatalMK">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notifikasi -->
+    <div id="notification" class="notification"></div>
+
+    <script src="script.js"></script>
+</body>

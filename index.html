@@ -1,173 +1,195 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IP & IPK Calculator</title>
-    <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IP & IPK Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4caf50',
+            'primary-dark': '#388e3c',
+            'primary-light': '#81c784',
+            'neutral-bg': '#f9fafb',
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 </head>
-<body>
-    <header class="site-header">
-        <div class="container">
-            <h1>IP & IPK Calculator</h1>
-            <p>Kalkulator akademik untuk semua prodi</p>
-        </div>
-    </header>
+<body class="font-inter bg-neutral-bg text-gray-800 min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-primary text-white text-center py-6 shadow-md">
+    <div class="container mx-auto">
+      <h1 class="text-2xl font-semibold">IP & IPK Calculator</h1>
+      <p class="opacity-90">Kalkulator akademik untuk semua prodi</p>
+    </div>
+  </header>
 
-    <nav class="site-nav">
-        <div class="container">
-            <button class="tab-btn active" data-target="calc">Perhitungan</button>
-            <button class="tab-btn" data-target="history">Riwayat</button>
-            <button class="tab-btn" data-target="settings">Pengaturan</button>
-        </div>
-    </nav>
+  <!-- Navigation Tabs -->
+  <nav class="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+    <div class="container mx-auto flex">
+      <button class="tab-btn flex-1 py-3 text-center text-gray-600 hover:bg-gray-100 active:bg-gray-100" data-target="calc">Perhitungan</button>
+      <button class="tab-btn flex-1 py-3 text-center text-gray-600 hover:bg-gray-100" data-target="history">Riwayat</button>
+      <button class="tab-btn flex-1 py-3 text-center text-gray-600 hover:bg-gray-100" data-target="settings">Pengaturan</button>
+    </div>
+  </nav>
 
-    <main class="site-main container">
-        <!-- Perhitungan -->
-        <section id="calc" class="tab-panel active">
-            <div class="grid">
-                <!-- Identitas -->
-                <div class="card">
-                    <h2>Identitas Mahasiswa</h2>
-                    <form id="student-form" class="form-grid" autocomplete="off">
-                        <div class="form-group">
-                            <label for="nama">Nama</label>
-                            <input type="text" id="nama" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="nim">NIM</label>
-                            <input type="text" id="nim" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="prodi">Program Studi</label>
-                            <input type="text" id="prodi" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="kampus">Kampus</label>
-                            <input type="text" id="kampus" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="semester">Semester</label>
-                            <input type="number" id="semester" min="1" max="14" required />
-                        </div>
-                        <div class="form-group">
-                            <label for="tahun">Tahun Akademik</label>
-                            <input type="text" id="tahun" placeholder="2023/2024" required />
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="catatan">Catatan (opsional)</label>
-                            <textarea id="catatan" rows="2"></textarea>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Mata Kuliah -->
-                <div class="card">
-                    <h2>Daftar Mata Kuliah</h2>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>Mata Kuliah</th>
-                                    <th>SKS</th>
-                                    <th>Nilai</th>
-                                    <th>Bobot</th>
-                                    <th>Mutu</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="course-body"></tbody>
-                        </table>
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-primary" id="add-course">Tambah Mata Kuliah</button>
-                        <button class="btn btn-secondary" id="reset-form">Reset Form</button>
-                    </div>
-                </div>
-
-                <!-- Hasil -->
-                <div class="card result-card">
-                    <h2>Hasil Perhitungan</h2>
-                    <div class="result-grid">
-                        <div class="result-item">
-                            <h3>Total SKS Semester</h3>
-                            <p id="total-sks-sem">0</p>
-                        </div>
-                        <div class="result-item">
-                            <h3>Total Mutu Semester</h3>
-                            <p id="total-mutu-sem">0.00</p>
-                        </div>
-                        <div class="result-item highlight">
-                            <h3>IP Semester</h3>
-                            <p id="ip-sem" class="score">0.00</p>
-                        </div>
-                        <div class="result-item">
-                            <h3>Total SKS Kumulatif</h3>
-                            <p id="total-sks-kum">0</p>
-                        </div>
-                        <div class="result-item">
-                            <h3>Total Mutu Kumulatif</h3>
-                            <p id="total-mutu-kum">0.00</p>
-                        </div>
-                        <div class="result-item highlight">
-                            <h3>IPK Akhir</h3>
-                            <p id="ipk-akhir" class="score">0.00</p>
-                        </div>
-                    </div>
-                    <div class="kumulatif-section">
-                        <h3>Data Kumulatif Sebelumnya</h3>
-                        <div class="grid">
-                            <div class="form-group">
-                                <label for="prev-sks">Total SKS Sebelumnya</label>
-                                <input type="number" id="prev-sks" min="0" value="0" />
-                            </div>
-                            <div class="form-group">
-                                <label for="prev-ipk">IPK Sebelumnya</label>
-                                <input type="number" id="prev-ipk" min="0" max="4" step="0.01" value="0" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-success" id="calc-btn">Hitung</button>
-                        <button class="btn btn-primary" id="save-btn">Simpan</button>
-                        <button class="btn btn-info" id="print-btn">Cetak</button>
-                    </div>
-                </div>
+  <main class="container mx-auto flex-1 py-8">
+    <!-- Perhitungan -->
+    <section id="calc" class="tab-panel active">
+      <div class="grid gap-6 lg:grid-cols-2">
+        <!-- Identitas -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-medium text-primary-dark mb-4">Identitas Mahasiswa</h2>
+          <form id="student-form" class="grid gap-4" autocomplete="off">
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-1" for="nama">Nama</label>
+                <input type="text" id="nama" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1" for="nim">NIM</label>
+                <input type="text" id="nim" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
             </div>
-        </section>
-
-        <!-- Riwayat -->
-        <section id="history" class="tab-panel">
-            <div class="card">
-                <h2>Riwayat Perhitungan</h2>
-                <div class="search-bar">
-                    <input type="text" id="search-history" placeholder="Cari (nama, prodi, semester, kampus)" />
-                </div>
-                <div id="history-list" class="history-list"></div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-1" for="prodi">Program Studi</label>
+                <input type="text" id="prodi" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1" for="kampus">Kampus</label>
+                <input type="text" id="kampus" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
             </div>
-        </section>
-
-        <!-- Pengaturan -->
-        <section id="settings" class="tab-panel">
-            <div class="card">
-                <h2>Pengaturan Bobot Nilai</h2>
-                <div id="grade-settings" class="settings-grid"></div>
-                <div class="btn-group">
-                    <button class="btn btn-success" id="save-grades">Simpan</button>
-                    <button class="btn btn-secondary" id="reset-grades">Reset</button>
-                </div>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-1" for="semester">Semester</label>
+                <input type="number" id="semester" min="1" max="14" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1" for="tahun">Tahun Akademik</label>
+                <input type="text" id="tahun" placeholder="2023/2024" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required />
+              </div>
             </div>
-        </section>
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <p>© 2024 IP & IPK Calculator – Made for Indonesian students.</p>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="catatan">Catatan (opsional)</label>
+              <textarea id="catatan" rows="2" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+            </div>
+          </form>
         </div>
-    </footer>
 
-    <script src="script.js"></script>
+        <!-- Mata Kuliah -->
+        <div class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-medium text-primary-dark mb-4">Daftar Mata Kuliah</h2>
+          <div class="overflow-x-auto mb-4">
+            <table class="min-w-full table-auto">
+              <thead>
+                <tr class="bg-primary-light text-white">
+                  <th class="p-2 text-left">No</th>
+                  <th class="p-2 text-left">Mata Kuliah</th>
+                  <th class="p-2 text-left">SKS</th>
+                  <th class="p-2 text-left">Nilai</th>
+                  <th class="p-2 text-left">Bobot</th>
+                  <th class="p-2 text-left">Mutu</th>
+                  <th class="p-2 text-left">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="course-body"></tbody>
+            </table>
+          </div>
+          <div class="flex space-x-3">
+            <button class="btn btn-primary flex-1" id="add-course">Tambah Mata Kuliah</button>
+            <button class="btn btn-secondary flex-1" id="reset-form">Reset Form</button>
+          </div>
+        </div>
+
+        <!-- Hasil -->
+        <div class="bg-white rounded-lg shadow p-6 col-span-2 lg:col-span-2">
+          <h2 class="text-lg font-medium text-primary-dark mb-4">Hasil Perhitungan</h2>
+          <div class="grid gap-4 md:grid-cols-3">
+            <div class="bg-gray-100 p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">Total SKS Semester</h3>
+              <p id="total-sks-sem" class="text-xl font-semibold">0</p>
+            </div>
+            <div class="bg-gray-100 p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">Total Mutu Semester</h3>
+              <p id="total-mutu-sem" class="text-xl font-semibold">0.00</p>
+            </div>
+            <div class="bg-primary text-white p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">IP Semester</h3>
+              <p id="ip-sem" class="text-2xl font-bold">0.00</p>
+            </div>
+            <div class="bg-gray-100 p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">Total SKS Kumulatif</h3>
+              <p id="total-sks-kum" class="text-xl font-semibold">0</p>
+            </div>
+            <div class="bg-gray-100 p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">Total Mutu Kumulatif</h3>
+              <p id="total-mutu-kum" class="text-xl font-semibold">0.00</p>
+            </div>
+            <div class="bg-primary text-white p-4 rounded text-center">
+              <h3 class="text-sm font-medium mb-1">IPK Akhir</h3>
+              <p id="ipk-akhir" class="text-2xl font-bold">0.00</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded mt-4">
+            <h3 class="text-base font-medium mb-2">Data Kumulatif Sebelumnya</h3>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium mb-1" for="prev-sks">Total SKS Sebelumnya</label>
+                <input type="number" id="prev-sks" min="0" value="0" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1" for="prev-ipk">IPK Sebelumnya</label>
+                <input type="number" id="prev-ipk" min="0" max="4" step="0.01" value="0" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+            </div>
+          </div>
+          <div class="flex space-x-3 mt-4">
+            <button class="btn btn-success flex-1" id="calc-btn">Hitung</button>
+            <button class="btn btn-primary flex-1" id="save-btn">Simpan</button>
+            <button class="btn btn-info flex-1" id="print-btn">Cetak</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Riwayat -->
+    <section id="history" class="tab-panel hidden">
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-medium text-primary-dark mb-4">Riwayat Perhitungan</h2>
+        <div class="mb-4">
+          <input type="text" id="search-history" placeholder="Cari (nama, prodi, semester, kampus)" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary" />
+        </div>
+        <div id="history-list" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <!-- Pengaturan -->
+    <section id="settings" class="tab-panel hidden">
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-medium text-primary-dark mb-4">Pengaturan Bobot Nilai</h2>
+        <div id="grade-settings" class="grid gap-4 md:grid-cols-3"></div>
+        <div class="flex space-x-3 mt-4">
+          <button class="btn btn-success" id="save-grades">Simpan</button>
+          <button class="btn btn-secondary" id="reset-grades">Reset</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-gray-800 text-gray-200 text-center py-4 mt-8">
+    <div class="container mx-auto">
+      <p>© 2024 IP & IPK Calculator – Made for Indonesian students.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>

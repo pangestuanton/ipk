@@ -1,7 +1,0 @@
-/* Minimal button styling */
-.btn {
-  @apply inline-flex items-center justify-center px-4 py-2 rounded font-medium transition-colors duration-200;
-}
-
-/* Since @apply does not work without PostCSS, provide fallback using Tailwind utility classes directly in HTML */
-/* We'll keep Tailwind classes on buttons in HTML, so this file can stay empty or contain only custom overrides if needed */

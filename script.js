@@ -1,15 +1,5 @@
-/**
- * KALKULATOR IP & IPK - MAIN SCRIPT
- * ================================
- * Aplikasi universal untuk menghitung IP Semester dan IPK
- */
-
-// ====================================
-// DATA & STATE MANAGEMENT
-// ====================================
-
-// Bobot nilai default
-const BOBOT_DEFAULT = {
+// Default Grades Configuration
+const defaultGrades = {
     'A': 4.00,
     'AB': 3.50,
     'B': 3.00,
@@ -19,715 +9,452 @@ const BOBOT_DEFAULT = {
     'E': 0.00
 };
 
-// State aplikasi
-let appState = {
-    identitas: {
-        nama: '',
-        nim: '',
-        programStudi: '',
-        semester: '',
-        namaKampus: ''
-    },
-    sksSebelumnya: 0,
-    ipkSebelumnya: 0,
-    mataKuliah: [],
-    bobotNilai: { ...BOBOT_DEFAULT }
-};
+// State
+let matkul = [];
+let grades = { ...defaultGrades };
+let currentId = null; // For editing
 
-// Mode modal untuk tambah atau edit
-let modalMode = 'add';
-let editingIndex = -1;
+// DOM Elements
+const elements = {
+    // Tabs
+    tabBtns: document.querySelectorAll('.tab-btn'),
+    tabContents: document.querySelectorAll('.tab-content'),
 
-// ====================================
-// INITIALIZATION
-// ====================================
+    // Inputs
+    nama: document.getElementById('nama'),
+    nim: document.getElementById('nim'),
+    prodi: document.getElementById('prodi'),
+    kampus: document.getElementById('kampus'),
+    semester: document.getElementById('semester'),
+    tahun: document.getElementById('tahun'),
+    catatan: document.getElementById('catatan'),
+    sksSebelumnya: document.getElementById('sks-sebelumnya'),
+    ipkSebelumnya: document.getElementById('ipk-sebelumnya'),
 
-document.addEventListener('DOMContentLoaded', function () {
-    initializeApp();
-    loadDataFromStorage();
-    renderUI();
-    attachEventListeners();
-});
+    // Table
+    matkulBody: document.getElementById('matkul-body'),
 
-function initializeApp() {
-    // Inisialisasi bobot setting UI
-    updateBobotUI();
-    
-    // Populate nilai select di modal
-    const selectNilai = document.getElementById('inputNilai');
-    Object.keys(appState.bobotNilai).forEach(nilai => {
-        const option = document.createElement('option');
-        option.value = nilai;
-        option.textContent = `${nilai} (${appState.bobotNilai[nilai].toFixed(2)})`;
-        selectNilai.appendChild(option);
-    });
-}
+    // Buttons
+    addMatkulBtn: document.getElementById('add-matkul'),
+    resetFormBtn: document.getElementById('reset-form'),
+    calculateBtn: document.getElementById('calculate-btn'),
+    saveBtn: document.getElementById('save-btn'),
+    exportBtn: document.getElementById('export-btn'),
 
-function attachEventListeners() {
-    // Tab navigation
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            switchTab(this.dataset.tab);
-        });
-    });
+    // Results
+    totalSksSemester: document.getElementById('total-sks-semester'),
+    totalMutuSemester: document.getElementById('total-mutu-semester'),
+    ipSemester: document.getElementById('ip-semester'),
+    totalSksKumulatif: document.getElementById('total-sks-kumulatif'),
+    totalMutuKumulatif: document.getElementById('total-mutu-kumulatif'),
+    ipkAkhir: document.getElementById('ipk-akhir'),
 
-    // Identitas inputs
-    document.getElementById('namaMahasiswa').addEventListener('change', function () {
-        appState.identitas.nama = this.value;
-    });
-    document.getElementById('nim').addEventListener('change', function () {
-        appState.identitas.nim = this.value;
-    });
-    document.getElementById('programStudi').addEventListener('change', function () {
-        appState.identitas.programStudi = this.value;
-    });
-    document.getElementById('semester').addEventListener('change', function () {
-        appState.identitas.semester = this.value;
-    });
-    document.getElementById('namaKampus').addEventListener('change', function () {
-        appState.identitas.namaKampus = this.value;
-    });
+    // History
+    historyList: document.getElementById('history-list'),
+    searchHistory: document.getElementById('search-history'),
 
-    // SKS Sebelumnya
-    document.getElementById('sksSebelumnya').addEventListener('change', function () {
-        appState.sksSebelumnya = Number(this.value) || 0;
-        hitungHasil();
-    });
-    document.getElementById('ipkSebelumnya').addEventListener('change', function () {
-        appState.ipkSebelumnya = Number(this.value) || 0;
-        hitungHasil();
-    });
-
-    // Tombol Mata Kuliah
-    document.getElementById('btnTambahMK').addEventListener('click', openModalTambah);
-
-    // Tombol Pengaturan
-    document.getElementById('btnResetBobot').addEventListener('click', resetBobot);
-    document.getElementById('btnSimpanData').addEventListener('click', saveDataToStorage);
-    document.getElementById('btnMuatData').addEventListener('click', loadDataFromStorage);
-    document.getElementById('btnResetSemua').addEventListener('click', resetSemua);
-    document.getElementById('btnPrint').addEventListener('click', printHasil);
-    document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
+    // Settings
+    gradesSettings: document.getElementById('grades-settings'),
+    saveSettingsBtn: document.getElementById('save-settings'),
+    resetSettingsBtn: document.getElementById('reset-settings'),
 
     // Modal
-    document.querySelector('.close-btn').addEventListener('click', closeModal);
-    document.getElementById('btnBatalMK').addEventListener('click', closeModal);
-    document.getElementById('formMK').addEventListener('submit', handleFormSubmit);
-    document.getElementById('modalMK').addEventListener('click', function (e) {
-        if (e.target === this) closeModal();
+    editModal: document.getElementById('edit-modal'),
+    confirmEditBtn: document.getElementById('confirm-edit'),
+    cancelEditBtn: document.getElementById('cancel-edit'),
+    closeModalBtn: document.querySelector('.close-modal')
+};
+
+// --- Initialization ---
+function init() {
+    loadSettings();
+    loadHistory();
+    addRow(); // Add first empty row
+    setupEventListeners();
+}
+
+// --- Event Listeners ---
+function setupEventListeners() {
+    // Tabs
+    elements.tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 
-    // Bobot inputs
-    updateBobotEventListeners();
-}
+    // Matkul Actions
+    elements.addMatkulBtn.addEventListener('click', () => addRow());
+    elements.resetFormBtn.addEventListener('click', resetForm);
 
-// ====================================
-// TAB NAVIGATION
-// ====================================
+    // Calculation & Saving
+    elements.calculateBtn.addEventListener('click', calculate);
+    elements.saveBtn.addEventListener('click', saveCalculation);
+    elements.exportBtn.addEventListener('click', exportToPrint);
 
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
+    // History
+    elements.searchHistory.addEventListener('input', renderHistory);
+
+    // Settings
+    elements.saveSettingsBtn.addEventListener('click', saveSettings);
+    elements.resetSettingsBtn.addEventListener('click', resetSettings);
+
+    // Modal
+    elements.closeModalBtn.addEventListener('click', closeModal);
+    elements.cancelEditBtn.addEventListener('click', closeModal);
+    elements.confirmEditBtn.addEventListener('click', () => {
+        closeModal();
+        loadToForm(currentId);
     });
 
-    // Remove active class from buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
+    // Auto-calculate on input change
+    const autoCalcInputs = [elements.sksSebelumnya, elements.ipkSebelumnya];
+    autoCalcInputs.forEach(input => input.addEventListener('input', calculate));
+}
+
+// --- Tab Switching ---
+function switchTab(tabId) {
+    elements.tabBtns.forEach(btn => btn.classList.remove('active'));
+    elements.tabContents.forEach(content => content.classList.remove('active'));
+
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+
+    if (tabId === 'history') renderHistory();
+    if (tabId === 'settings') renderSettings();
+}
+
+// --- Matkul Table Logic ---
+function addRow(data = null) {
+    const id = data ? data.id : Date.now();
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+
+    tr.innerHTML = `
+        <td class="row-num"></td>
+        <td><input type="text" class="mk-name" placeholder="Nama Mata Kuliah" value="${data ? data.name : ''}"></td>
+        <td><input type="number" class="mk-sks" min="1" value="${data ? data.sks : 1}"></td>
+        <td>
+            <select class="mk-grade">
+                ${Object.keys(grades).map(g => `<option value="${g}" ${data && data.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
+            </select>
+        </td>
+        <td><input type="number" class="mk-bobot" step="0.01" value="${data ? data.bobot : grades[data?.grade || 'A'] || 4}"></td>
+        <td class="mk-mutu">0.00</td>
+        <td><button class="btn btn-danger btn-sm delete-row">Hapus</button></td>
+    `;
+
+    elements.matkulBody.appendChild(tr);
+    updateRowNumbers();
+    calculateRowMutu(tr);
+
+    // Add event listeners for this row
+    tr.querySelector('.mk-sks').addEventListener('input', () => calculateRowMutu(tr));
+    tr.querySelector('.mk-grade').addEventListener('change', (e) => {
+        const grade = e.target.value;
+        tr.querySelector('.mk-bobot').value = grades[grade];
+        calculateRowMutu(tr);
     });
-
-    // Show selected tab
-    document.getElementById(tabName + '-tab').classList.add('active');
-
-    // Add active class to button
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-
-    // Update hasil jika tab hasil dibuka
-    if (tabName === 'hasil') {
-        hitungHasil();
-    }
-}
-
-// ====================================
-// MATA KULIAH MANAGEMENT
-// ====================================
-
-function renderMataKuliahCards() {
-    const container = document.getElementById('mataKuliahContainer');
-    const emptyState = document.getElementById('emptyState');
-
-    if (appState.mataKuliah.length === 0) {
-        container.innerHTML = '';
-        emptyState.style.display = 'block';
-        return;
-    }
-
-    emptyState.style.display = 'none';
-    container.innerHTML = '';
-
-    appState.mataKuliah.forEach((mk, index) => {
-        const mutu = mk.sks * appState.bobotNilai[mk.nilai];
-        const card = document.createElement('div');
-        card.className = 'course-card';
-        card.innerHTML = `
-            <div class="course-header">
-                <div class="course-info">
-                    <div class="course-title">${escapeHtml(mk.nama)}</div>
-                    <div class="course-details">
-                        <div class="course-detail-item">
-                            <span class="course-detail-label">SKS</span>
-                            <span class="course-detail-value">${mk.sks}</span>
-                        </div>
-                        <div class="course-detail-item">
-                            <span class="course-detail-label">Nilai</span>
-                            <span class="course-detail-value">${mk.nilai}</span>
-                        </div>
-                        <div class="course-detail-item">
-                            <span class="course-detail-label">Bobot</span>
-                            <span class="course-detail-value">${appState.bobotNilai[mk.nilai].toFixed(2)}</span>
-                        </div>
-                        <div class="course-detail-item">
-                            <span class="course-detail-label">Mutu</span>
-                            <span class="course-detail-value">${mutu.toFixed(2)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="course-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="openModalEdit(${index})">✏️ Edit</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteMataKuliah(${index})">🗑️ Hapus</button>
-                </div>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-
-    hitungHasil();
-}
-
-function openModalTambah() {
-    modalMode = 'add';
-    document.getElementById('modalTitle').textContent = 'Tambah Mata Kuliah';
-    document.getElementById('formMK').reset();
-    document.getElementById('modalMK').classList.add('show');
-}
-
-function openModalEdit(index) {
-    modalMode = 'edit';
-    editingIndex = index;
-    const mk = appState.mataKuliah[index];
-    
-    document.getElementById('modalTitle').textContent = 'Edit Mata Kuliah';
-    document.getElementById('inputNamaMK').value = mk.nama;
-    document.getElementById('inputSKS').value = mk.sks;
-    document.getElementById('inputNilai').value = mk.nilai;
-    document.getElementById('modalMK').classList.add('show');
-}
-
-function closeModal() {
-    document.getElementById('modalMK').classList.remove('show');
-    document.getElementById('formMK').reset();
-}
-
-function handleFormSubmit(e) {
-    e.preventDefault();
-
-    const nama = document.getElementById('inputNamaMK').value.trim();
-    const sks = Number(document.getElementById('inputSKS').value);
-    const nilai = document.getElementById('inputNilai').value;
-
-    // Validasi
-    if (!nama) {
-        showNotification('Nama mata kuliah tidak boleh kosong', 'error');
-        return;
-    }
-    if (sks < 1) {
-        showNotification('SKS minimal harus 1', 'error');
-        return;
-    }
-    if (!nilai) {
-        showNotification('Nilai harus dipilih', 'error');
-        return;
-    }
-
-    if (modalMode === 'add') {
-        appState.mataKuliah.push({ nama, sks, nilai });
-        showNotification('Mata kuliah berhasil ditambahkan', 'success');
-    } else {
-        appState.mataKuliah[editingIndex] = { nama, sks, nilai };
-        showNotification('Mata kuliah berhasil diperbarui', 'success');
-    }
-
-    closeModal();
-    renderMataKuliahCards();
-}
-
-function deleteMataKuliah(index) {
-    if (confirm('Apakah Anda yakin ingin menghapus mata kuliah ini?')) {
-        const deleted = appState.mataKuliah[index].nama;
-        appState.mataKuliah.splice(index, 1);
-        renderMataKuliahCards();
-        showNotification(`"${deleted}" berhasil dihapus`, 'success');
-    }
-}
-
-// ====================================
-// BOBOT NILAI MANAGEMENT
-// ====================================
-
-function updateBobotUI() {
-    const container = document.getElementById('bobotContainer');
-    container.innerHTML = '';
-
-    Object.keys(appState.bobotNilai).forEach(nilai => {
-        const item = document.createElement('div');
-        item.className = 'bobot-item';
-        item.innerHTML = `
-            <label>${nilai}</label>
-            <input type="number" class="bobot-input" data-nilai="${nilai}" 
-                   value="${appState.bobotNilai[nilai].toFixed(2)}" 
-                   min="0" max="4" step="0.01">
-        `;
-        container.appendChild(item);
-    });
-
-    updateBobotEventListeners();
-}
-
-function updateBobotEventListeners() {
-    document.querySelectorAll('.bobot-input').forEach(input => {
-        input.addEventListener('change', function () {
-            const nilai = this.dataset.nilai;
-            appState.bobotNilai[nilai] = Number(this.value);
-            
-            // Update select options di modal
-            updateModalSelectOptions();
-            
-            // Render ulang dan hitung
-            renderMataKuliahCards();
-            showNotification('Bobot nilai berhasil diperbarui', 'success');
-        });
+    tr.querySelector('.mk-bobot').addEventListener('input', () => calculateRowMutu(tr));
+    tr.querySelector('.delete-row').addEventListener('click', () => {
+        tr.remove();
+        updateRowNumbers();
+        calculate();
     });
 }
 
-function updateModalSelectOptions() {
-    const selectNilai = document.getElementById('inputNilai');
-    selectNilai.innerHTML = '';
-    Object.keys(appState.bobotNilai).forEach(nilai => {
-        const option = document.createElement('option');
-        option.value = nilai;
-        option.textContent = `${nilai} (${appState.bobotNilai[nilai].toFixed(2)})`;
-        selectNilai.appendChild(option);
+function calculateRowMutu(tr) {
+    const sks = parseFloat(tr.querySelector('.mk-sks').value) || 0;
+    const bobot = parseFloat(tr.querySelector('.mk-bobot').value) || 0;
+    const mutu = (sks * bobot).toFixed(2);
+    tr.querySelector('.mk-mutu').textContent = mutu;
+    calculate();
+}
+
+function updateRowNumbers() {
+    const rows = elements.matkulBody.querySelectorAll('tr');
+    rows.forEach((row, index) => {
+        row.querySelector('.row-num').textContent = index + 1;
     });
 }
 
-function resetBobot() {
-    if (confirm('Reset bobot nilai ke default? Ini tidak bisa dibatalkan.')) {
-        appState.bobotNilai = { ...BOBOT_DEFAULT };
-        updateBobotUI();
-        renderMataKuliahCards();
-        showNotification('Bobot nilai direset ke default', 'success');
-    }
-}
-
-// ====================================
-// CALCULATION
-// ====================================
-
-function hitungHasil() {
-    if (appState.mataKuliah.length === 0) {
-        resetHasilDisplay();
-        return;
-    }
-
-    // Hitung semester ini
+// --- Calculation Logic ---
+function calculate() {
     let totalSksSemester = 0;
     let totalMutuSemester = 0;
 
-    appState.mataKuliah.forEach(mk => {
-        totalSksSemester += mk.sks;
-        totalMutuSemester += mk.sks * appState.bobotNilai[mk.nilai];
+    const rows = elements.matkulBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const sks = parseFloat(row.querySelector('.mk-sks').value) || 0;
+        const bobot = parseFloat(row.querySelector('.mk-bobot').value) || 0;
+        totalSksSemester += sks;
+        totalMutuSemester += (sks * bobot);
     });
 
     const ipSemester = totalSksSemester > 0 ? totalMutuSemester / totalSksSemester : 0;
 
-    // Hitung kumulatif
-    const mutuSebelumnya = appState.sksSebelumnya * appState.ipkSebelumnya;
-    const totalSksKumulatif = appState.sksSebelumnya + totalSksSemester;
+    // Kumulatif
+    const sksSebelumnya = parseFloat(elements.sksSebelumnya.value) || 0;
+    const ipkSebelumnya = parseFloat(elements.ipkSebelumnya.value) || 0;
+    const mutuSebelumnya = sksSebelumnya * ipkSebelumnya;
+
+    const totalSksKumulatif = sksSebelumnya + totalSksSemester;
     const totalMutuKumulatif = mutuSebelumnya + totalMutuSemester;
-    const ipk = totalSksKumulatif > 0 ? totalMutuKumulatif / totalSksKumulatif : 0;
+    const ipkAkhir = totalSksKumulatif > 0 ? totalMutuKumulatif / totalSksKumulatif : 0;
 
-    // Cap nilai max 4.00
-    const displayIPSemester = Math.min(ipSemester, 4.00);
-    const displayIPK = Math.min(ipk, 4.00);
-
-    // Update display
-    document.getElementById('hasilTotalSksSemester').textContent = totalSksSemester;
-    document.getElementById('hasilTotalMutuSemester').textContent = totalMutuSemester.toFixed(2);
-    document.getElementById('hasilIPSemester').textContent = displayIPSemester.toFixed(2);
-    
-    document.getElementById('hasilTotalSksKumulatif').textContent = totalSksKumulatif;
-    document.getElementById('hasilTotalMutuKumulatif').textContent = totalMutuKumulatif.toFixed(2);
-    document.getElementById('hasilIPK').textContent = displayIPK.toFixed(2);
-
-    // Store hasil untuk export
-    window.lastResults = {
-        semester: appState.identitas.semester,
-        totalSksSemester,
-        totalMutuSemester,
-        ipSemester: displayIPSemester,
-        totalSksKumulatif,
-        totalMutuKumulatif,
-        ipk: displayIPK
-    };
+    // Update UI
+    elements.totalSksSemester.textContent = totalSksSemester;
+    elements.totalMutuSemester.textContent = totalMutuSemester.toFixed(2);
+    elements.ipSemester.textContent = ipSemester.toFixed(2);
+    elements.totalSksKumulatif.textContent = totalSksKumulatif;
+    elements.totalMutuKumulatif.textContent = totalMutuKumulatif.toFixed(2);
+    elements.ipkAkhir.textContent = ipkAkhir.toFixed(2);
 }
 
-function resetHasilDisplay() {
-    document.getElementById('hasilTotalSksSemester').textContent = '0';
-    document.getElementById('hasilTotalMutuSemester').textContent = '0.00';
-    document.getElementById('hasilIPSemester').textContent = '0.00';
-    document.getElementById('hasilTotalSksKumulatif').textContent = '0';
-    document.getElementById('hasilTotalMutuKumulatif').textContent = '0.00';
-    document.getElementById('hasilIPK').textContent = '0.00';
-}
+// --- Validation ---
+function validate() {
+    let isValid = true;
+    const inputs = [
+        { el: elements.nama, msg: 'Nama harus diisi' },
+        { el: elements.nim, msg: 'NIM harus diisi' },
+        { el: elements.prodi, msg: 'Program Studi harus diisi' },
+        { el: elements.kampus, msg: 'Kampus harus diisi' },
+        { el: elements.semester, msg: 'Semester harus diisi' },
+        { el: elements.tahun, msg: 'Tahun Akademik harus diisi' }
+    ];
 
-// ====================================
-// STORAGE (LOCALSTORAGE)
-// ====================================
-
-function saveDataToStorage() {
-    try {
-        localStorage.setItem('appState', JSON.stringify(appState));
-        showNotification('Data berhasil disimpan', 'success');
-    } catch (error) {
-        showNotification('Gagal menyimpan data: ' + error.message, 'error');
-    }
-}
-
-function loadDataFromStorage() {
-    try {
-        const saved = localStorage.getItem('appState');
-        if (saved) {
-            const loaded = JSON.parse(saved);
-            appState = { ...appState, ...loaded };
-            
-            // Update UI dengan data tersimpan
-            document.getElementById('namaMahasiswa').value = appState.identitas.nama || '';
-            document.getElementById('nim').value = appState.identitas.nim || '';
-            document.getElementById('programStudi').value = appState.identitas.programStudi || '';
-            document.getElementById('semester').value = appState.identitas.semester || '';
-            document.getElementById('namaKampus').value = appState.identitas.namaKampus || '';
-            
-            document.getElementById('sksSebelumnya').value = appState.sksSebelumnya || '';
-            document.getElementById('ipkSebelumnya').value = appState.ipkSebelumnya || '';
-            
-            updateBobotUI();
-            renderMataKuliahCards();
-            
-            showNotification('Data tersimpan berhasil dimuat', 'success');
+    inputs.forEach(item => {
+        if (!item.el.value.trim()) {
+            item.el.classList.add('error');
+            isValid = false;
+        } else {
+            item.el.classList.remove('error');
         }
-    } catch (error) {
-        showNotification('Gagal memuat data tersimpan', 'warning');
+    });
+
+    // Validasi Tabel
+    const rows = elements.matkulBody.querySelectorAll('tr');
+    if (rows.length === 0 || rows[0].querySelector('.mk-name').value === '') {
+        alert('Silakan tambahkan minimal 1 mata kuliah.');
+        return false;
+    }
+
+    rows.forEach(row => {
+        const name = row.querySelector('.mk-name').value.trim();
+        const sks = parseFloat(row.querySelector('.mk-sks').value);
+        if (!name) {
+            row.querySelector('.mk-name').classList.add('error');
+            isValid = false;
+        } else {
+            row.querySelector('.mk-name').classList.remove('error');
+        }
+        
+        if (!sks || sks < 1) {
+            row.querySelector('.mk-sks').classList.add('error');
+            isValid = false;
+        } else {
+            row.querySelector('.mk-sks').classList.remove('error');
+        }
+    });
+
+    if (!isValid) alert('Harap lengkapi data yang dibutuhkan.');
+    return isValid;
+}
+
+// --- Save / Load Data ---
+function saveCalculation() {
+    if (!validate()) return;
+
+    const data = {
+        id: currentId || Date.now(),
+        timestamp: new Date().toISOString(),
+        identity: {
+            nama: elements.nama.value,
+            nim: elements.nim.value,
+            prodi: elements.prodi.value,
+            kampus: elements.kampus.value,
+            semester: elements.semester.value,
+            tahun: elements.tahun.value,
+            catatan: elements.catatan.value
+        },
+        kumulatif: {
+            sksSebelumnya: parseFloat(elements.sksSebelumnya.value) || 0,
+            ipkSebelumnya: parseFloat(elements.ipkSebelumnya.value) || 0
+        },
+        matkul: Array.from(elements.matkulBody.querySelectorAll('tr')).map(row => ({
+            name: row.querySelector('.mk-name').value,
+            sks: parseFloat(row.querySelector('.mk-sks').value),
+            grade: row.querySelector('.mk-grade').value,
+            bobot: parseFloat(row.querySelector('.mk-bobot').value),
+            mutu: parseFloat(row.querySelector('.mk-mutu').textContent)
+        })),
+        result: {
+            ipSemester: parseFloat(elements.ipSemester.textContent),
+            ipkAkhir: parseFloat(elements.ipkAkhir.textContent)
+        }
+    };
+
+    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
+    
+    // Update jika edit, tambah jika baru
+    const index = history.findIndex(h => h.id === data.id);
+    if (index > -1) {
+        history[index] = data;
+    } else {
+        history.unshift(data); // Add to top
+    }
+
+    localStorage.setItem('ipk_history', JSON.stringify(history));
+    
+    // Reset currentId after save
+    currentId = null;
+    
+    alert('Data berhasil disimpan!');
+    loadHistory(); // Refresh history view if open
+}
+
+function loadToForm(id) {
+    currentId = id;
+    const history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
+    const data = history.find(h => h.id === id);
+    if (!data) return;
+
+    // Fill Identity
+    elements.nama.value = data.identity.nama;
+    elements.nim.value = data.identity.nim;
+    elements.prodi.value = data.identity.prodi;
+    elements.kampus.value = data.identity.kampus;
+    elements.semester.value = data.identity.semester;
+    elements.tahun.value = data.identity.tahun;
+    elements.catatan.value = data.identity.catatan;
+
+    // Fill Kumulatif
+    elements.sksSebelumnya.value = data.kumulatif.sksSebelumnya;
+    elements.ipkSebelumnya.value = data.kumulatif.ipkSebelumnya;
+
+    // Fill Matkul
+    elements.matkulBody.innerHTML = '';
+    data.matkul.forEach(mk => addRow(mk));
+
+    calculate();
+    switchTab('calculator');
+}
+
+function deleteHistory(id) {
+    if (!confirm('Yakin ingin menghapus data ini?')) return;
+    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem('ipk_history', JSON.stringify(history));
+    renderHistory();
+}
+
+// --- History Rendering ---
+function renderHistory() {
+    const query = elements.searchHistory.value.toLowerCase();
+    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
+
+    // Filter
+    history = history.filter(item => {
+        const { nama, prodi, semester, kampus } = item.identity;
+        return (
+            nama.toLowerCase().includes(query) ||
+            prodi.toLowerCase().includes(query) ||
+            semester.includes(query) ||
+            kampus.toLowerCase().includes(query)
+        );
+    });
+
+    elements.historyList.innerHTML = '';
+
+    if (history.length === 0) {
+        elements.historyList.innerHTML = '<div class="empty-state">Tidak ada data ditemukan.</div>';
+        return;
+    }
+
+    history.forEach(item => {
+        const date = new Date(item.timestamp).toLocaleDateString('id-ID');
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+            <div class="history-info">
+                <h4>${item.identity.nama} (${item.identity.nim})</h4>
+                <div class="history-meta">
+                    <span>📍 ${item.identity.kampus}</span>
+                    <span>🎓 ${item.identity.prodi}</span>
+                    <span>📅 Semester ${item.identity.semester}</span>
+                    <span>📅 ${item.identity.tahun}</span>
+                </div>
+                <div class="history-meta" style="margin-top: 5px;">
+                    <span><strong>IP:</strong> ${item.result.ipSemester.toFixed(2)}</span>
+                    <span><strong>IPK:</strong> ${item.result.ipkAkhir.toFixed(2)}</span>
+                    <span style="color: #888;">${date}</span>
+                </div>
+            </div>
+            <div class="history-actions">
+                <button class="btn btn-primary btn-sm" onclick="loadToForm(${item.id})">Buka</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteHistory(${item.id})">Hapus</button>
+            </div>
+        `;
+        elements.historyList.appendChild(div);
+    });
+}
+
+// --- Settings Logic ---
+function renderSettings() {
+    elements.gradesSettings.innerHTML = '';
+    Object.entries(grades).forEach(([grade, weight]) => {
+        const div = document.createElement('div');
+        div.className = 'grade-setting';
+        div.innerHTML = `
+            <label>${grade}</label>
+            <input type="number" step="0.01" value="${weight}" data-grade="${grade}">
+        `;
+        elements.gradesSettings.appendChild(div);
+    });
+}
+
+function saveSettings() {
+    const inputs = elements.gradesSettings.querySelectorAll('input');
+    inputs.forEach(input => {
+        grades[input.dataset.grade] = parseFloat(input.value) || 0;
+    });
+    localStorage.setItem('ipk_grades', JSON.stringify(grades));
+    alert('Pengaturan bobot nilai berhasil disimpan!');
+    
+    // Refresh table dropdowns
+    const rows = elements.matkulBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const select = row.querySelector('.mk-grade');
+        const currentVal = select.value;
+        select.innerHTML = Object.keys(grades).map(g => `<option value="${g}" ${g === currentVal ? 'selected' : ''}>${g}</option>`).join('');
+    });
+}
+
+function resetSettings() {
+    grades = { ...defaultGrades };
+    localStorage.setItem('ipk_grades', JSON.stringify(grades));
+    renderSettings();
+    alert('Reset ke default berhasil!');
+}
+
+function loadSettings() {
+    const saved = localStorage.getItem('ipk_grades');
+    if (saved) grades = JSON.parse(saved);
+}
+
+// --- Utilities ---
+function resetForm() {
+    if (confirm('Yakin ingin mereset form? Data yang belum disimpan akan hilang.')) {
+        elements.matkulBody.innerHTML = '';
+        currentId = null;
+        document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+        elements.sksSebelumnya.value = 0;
+        elements.ipkSebelumnya.value = 0;
+        addRow();
+        calculate();
     }
 }
 
-function resetSemua() {
-    if (confirm('Reset SEMUA data? Data akan dihapus permanen dan tidak bisa dikembalikan.')) {
-        appState = {
-            identitas: {
-                nama: '',
-                nim: '',
-                programStudi: '',
-                semester: '',
-                namaKampus: ''
-            },
-            sksSebelumnya: 0,
-            ipkSebelumnya: 0,
-            mataKuliah: [],
-            bobotNilai: { ...BOBOT_DEFAULT }
-        };
-
-        document.getElementById('namaMahasiswa').value = '';
-        document.getElementById('nim').value = '';
-        document.getElementById('programStudi').value = '';
-        document.getElementById('semester').value = '';
-        document.getElementById('namaKampus').value = '';
-        document.getElementById('sksSebelumnya').value = '';
-        document.getElementById('ipkSebelumnya').value = '';
-
-        updateBobotUI();
-        renderMataKuliahCards();
-        resetHasilDisplay();
-        localStorage.removeItem('appState');
-
-        showNotification('Semua data telah direset', 'success');
-    }
-}
-
-// ====================================
-// EXPORT & PRINT
-// ====================================
-
-function printHasil() {
+function exportToPrint() {
     window.print();
 }
 
-function exportPDF() {
-    // Simple PDF export using canvas and download
-    const printArea = generatePrintContent();
-    const printWindow = window.open('', '', 'height=500,width=800');
-    printWindow.document.write(printArea);
-    printWindow.document.close();
-    
-    setTimeout(() => {
-        printWindow.print();
-    }, 250);
-}
-
-function generatePrintContent() {
-    const hasil = window.lastResults || {};
-    const identitas = appState.identitas;
-
-    let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Laporan IP & IPK</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 20px;
-                    background: white;
-                    color: #333;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    border-bottom: 3px solid #16a34a;
-                    padding-bottom: 20px;
-                }
-                .header h1 {
-                    margin: 0;
-                    color: #16a34a;
-                }
-                .identitas {
-                    margin-bottom: 30px;
-                    border: 1px solid #ddd;
-                    padding: 15px;
-                    border-radius: 8px;
-                }
-                .identitas-row {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-                .identitas-row div {
-                    display: flex;
-                    gap: 20px;
-                }
-                .identitas-row span:first-child {
-                    font-weight: bold;
-                    width: 150px;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 30px;
-                }
-                table th, table td {
-                    border: 1px solid #ddd;
-                    padding: 12px;
-                    text-align: left;
-                }
-                table th {
-                    background: #16a34a;
-                    color: white;
-                    font-weight: bold;
-                }
-                table tr:nth-child(even) {
-                    background: #f9f9f9;
-                }
-                .results {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 15px;
-                    margin-bottom: 30px;
-                }
-                .result-item {
-                    border: 2px solid #16a34a;
-                    padding: 15px;
-                    border-radius: 8px;
-                    text-align: center;
-                }
-                .result-item-label {
-                    font-size: 12px;
-                    color: #666;
-                    margin-bottom: 5px;
-                }
-                .result-item-value {
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #16a34a;
-                }
-                .footer {
-                    margin-top: 50px;
-                    display: flex;
-                    justify-content: space-around;
-                }
-                .footer-item {
-                    text-align: center;
-                }
-                .signature-space {
-                    height: 60px;
-                    border-top: 1px solid #333;
-                    margin-top: 40px;
-                }
-                @media print {
-                    body { background: white; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>📊 Laporan IP & IPK</h1>
-                <p>Kalkulator IP & IPK Universal</p>
-            </div>
-    `;
-
-    // Identitas
-    if (identitas.nama || identitas.nim || identitas.programStudi) {
-        html += `
-            <div class="identitas">
-                <h3>Data Mahasiswa</h3>
-                <div class="identitas-row">
-                    <div>
-                        ${identitas.nama ? `<span>Nama:</span><span>${escapeHtml(identitas.nama)}</span>` : ''}
-                    </div>
-                    <div>
-                        ${identitas.nim ? `<span>NIM:</span><span>${escapeHtml(identitas.nim)}</span>` : ''}
-                    </div>
-                </div>
-                <div class="identitas-row">
-                    <div>
-                        ${identitas.programStudi ? `<span>Program Studi:</span><span>${escapeHtml(identitas.programStudi)}</span>` : ''}
-                    </div>
-                    <div>
-                        ${identitas.semester ? `<span>Semester:</span><span>${identitas.semester}</span>` : ''}
-                    </div>
-                </div>
-                ${identitas.namaKampus ? `
-                    <div class="identitas-row">
-                        <div>
-                            <span>Kampus:</span><span>${escapeHtml(identitas.namaKampus)}</span>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-
-    // Tabel Mata Kuliah
-    if (appState.mataKuliah.length > 0) {
-        html += `
-            <h3>Daftar Mata Kuliah</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>No</th>
-                        <th>Mata Kuliah</th>
-                        <th>SKS</th>
-                        <th>Nilai</th>
-                        <th>Bobot</th>
-                        <th>Mutu</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        appState.mataKuliah.forEach((mk, index) => {
-            const mutu = mk.sks * appState.bobotNilai[mk.nilai];
-            html += `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td>${escapeHtml(mk.nama)}</td>
-                    <td>${mk.sks}</td>
-                    <td>${mk.nilai}</td>
-                    <td>${appState.bobotNilai[mk.nilai].toFixed(2)}</td>
-                    <td>${mutu.toFixed(2)}</td>
-                </tr>
-            `;
-        });
-
-        html += `
-                </tbody>
-            </table>
-        `;
-    }
-
-    // Hasil
-    html += `
-        <h3>Hasil Perhitungan</h3>
-        <div class="results">
-            <div class="result-item">
-                <div class="result-item-label">Total SKS Semester Ini</div>
-                <div class="result-item-value">${hasil.totalSksSemester || 0}</div>
-            </div>
-            <div class="result-item">
-                <div class="result-item-label">Total Mutu Semester Ini</div>
-                <div class="result-item-value">${(hasil.totalMutuSemester || 0).toFixed(2)}</div>
-            </div>
-            <div class="result-item">
-                <div class="result-item-label">IP Semester Ini</div>
-                <div class="result-item-value">${(hasil.ipSemester || 0).toFixed(2)}</div>
-            </div>
-            <div class="result-item">
-                <div class="result-item-label">Total SKS Kumulatif</div>
-                <div class="result-item-value">${hasil.totalSksKumulatif || 0}</div>
-            </div>
-            <div class="result-item">
-                <div class="result-item-label">Total Mutu Kumulatif</div>
-                <div class="result-item-value">${(hasil.totalMutuKumulatif || 0).toFixed(2)}</div>
-            </div>
-            <div class="result-item">
-                <div class="result-item-label">IPK Akhir</div>
-                <div class="result-item-value">${(hasil.ipk || 0).toFixed(2)}</div>
-            </div>
-        </div>
-
-        <p style="margin-top: 30px; font-size: 12px; color: #999;">
-            Laporan ini digenera pada ${new Date().toLocaleString('id-ID')}
-        </p>
-    `;
-
-    html += `
-        </body>
-        </html>
-    `;
-
-    return html;
-}
-
-// ====================================
-// UTILITIES
-// ====================================
-
-function showNotification(message, type = 'info') {
-    const notification = document.getElementById('notification');
-    notification.className = `notification ${type} show`;
-    notification.textContent = message;
-
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 3500);
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function renderUI() {
-    renderMataKuliahCards();
-    hitungHasil();
-}
+// Start App
+init();

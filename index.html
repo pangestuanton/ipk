@@ -1,15 +1,264 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ITERA GPA Calculator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel CDN (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  </head>
-  <body>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        itera: {
+                            red: '#8B0000',
+                            gold: '#FFD700',
+                        }
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Utilities ---
+        const GRADE_WEIGHTS = {
+            'A': 4.00, 'AB': 3.50, 'B': 3.00, 'BC': 2.50, 'C': 2.00, 'D': 1.00, 'E': 0.00
+        };
+
+        const calculateIPS = (courses) => {
+            let totalSKS = 0;
+            let totalPoints = 0;
+            courses.forEach(course => {
+                const sks = parseFloat(course.sks) || 0;
+                const weight = GRADE_WEIGHTS[course.grade] || 0;
+                totalSKS += sks;
+                totalPoints += (sks * weight);
+            });
+            return {
+                ips: totalSKS > 0 ? (totalPoints / totalSKS).toFixed(2) : "0.00",
+                totalSKS,
+                totalPoints
+            };
+        };
+
+        const calculateIPK = (semesters) => {
+            let cumulativeSKS = 0;
+            let cumulativePoints = 0;
+            semesters.forEach(semester => {
+                const { totalSKS, totalPoints } = calculateIPS(semester.courses);
+                cumulativeSKS += totalSKS;
+                cumulativePoints += totalPoints;
+            });
+            return {
+                ipk: cumulativeSKS > 0 ? (cumulativePoints / cumulativeSKS).toFixed(2) : "0.00",
+                cumulativeSKS
+            };
+        };
+
+        // --- Components ---
+        const Navbar = () => (
+            <nav className="bg-[#8B0000] text-white shadow-lg py-4 px-6 sticky top-0 z-50">
+                <div className="container mx-auto flex justify-between items-center">
+                    <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                            <span className="text-[#8B0000] font-bold text-xl">I</span>
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold tracking-tight">ITERA GPA Calculator</h1>
+                            <p className="text-xs text-[#FFD700] font-medium uppercase tracking-widest">Institut Teknologi Sumatera</p>
+                        </div>
+                    </div>
+                    <div className="hidden md:block text-sm font-medium opacity-80">
+                        Akademik & Perencanaan Masa Depan
+                    </div>
+                </div>
+            </nav>
+        );
+
+        const SummaryStats = ({ ipk, totalSKS }) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center text-[#8B0000]">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Indeks Prestasi Kumulatif</p>
+                        <p className="text-3xl font-black text-slate-800">{ipk}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Total SKS Terambil</p>
+                        <p className="text-3xl font-black text-slate-800">{totalSKS}</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const CourseRow = ({ course, onUpdate, onDelete }) => {
+            const grades = ['A', 'AB', 'B', 'BC', 'C', 'D', 'E'];
+            return (
+                <div className="grid grid-cols-12 gap-3 mb-3 items-center animate-fadeIn">
+                    <div className="col-span-6">
+                        <input
+                            type="text"
+                            placeholder="Nama Mata Kuliah"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#8B0000] outline-none transition-all"
+                            value={course.name}
+                            onChange={(e) => onUpdate({ ...course, name: e.target.value })}
+                        />
+                    </div>
+                    <div className="col-span-2">
+                        <input
+                            type="number"
+                            placeholder="SKS"
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#8B0000] outline-none"
+                            value={course.sks}
+                            onChange={(e) => onUpdate({ ...course, sks: e.target.value })}
+                        />
+                    </div>
+                    <div className="col-span-3">
+                        <select
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#8B0000] outline-none"
+                            value={course.grade}
+                            onChange={(e) => onUpdate({ ...course, grade: e.target.value })}
+                        >
+                            {grades.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                    </div>
+                    <div className="col-span-1 flex justify-center">
+                        <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const SemesterCard = ({ semester, onUpdate, onDelete }) => {
+            const { ips, totalSKS } = calculateIPS(semester.courses);
+            const addCourse = () => {
+                onUpdate({ ...semester, courses: [...semester.courses, { id: Date.now(), name: '', sks: 2, grade: 'A' }] });
+            };
+            return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <input
+                            className="font-bold text-slate-800 bg-transparent border-b border-transparent focus:border-[#8B0000] outline-none"
+                            value={semester.name}
+                            onChange={(e) => onUpdate({ ...semester, name: e.target.value })}
+                        />
+                        <div className="flex items-center space-x-4">
+                            <div className="text-right">
+                                <p className="text-[10px] text-slate-400 uppercase font-bold">IPS</p>
+                                <p className="font-bold text-[#8B0000]">{ips}</p>
+                            </div>
+                            <button onClick={onDelete} className="text-slate-300 hover:text-red-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="p-6">
+                        {semester.courses.map(course => (
+                            <CourseRow
+                                key={course.id}
+                                course={course}
+                                onUpdate={(updated) => onUpdate({ ...semester, courses: semester.courses.map(c => c.id === updated.id ? updated : c) })}
+                                onDelete={() => onUpdate({ ...semester, courses: semester.courses.filter(c => c.id !== course.id) })}
+                            />
+                        ))}
+                        <button onClick={addCourse} className="mt-4 w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:text-[#8B0000] hover:border-[#8B0000] transition-all flex items-center justify-center space-x-2">
+                            <span>+ Tambah Mata Kuliah</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const App = () => {
+            const [semesters, setSemesters] = useState(() => {
+                const saved = localStorage.getItem('itera-gpa-data');
+                return saved ? JSON.parse(saved) : [{ id: 1, name: 'Semester 1', courses: [{ id: 1, name: 'Matematika Dasar IA', sks: 3, grade: 'A' }] }];
+            });
+
+            useEffect(() => {
+                localStorage.setItem('itera-gpa-data', JSON.stringify(semesters));
+            }, [semesters]);
+
+            const { ipk, cumulativeSKS } = calculateIPK(semesters);
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <Navbar />
+                    <main className="container mx-auto px-4 py-8 max-w-4xl flex-grow">
+                        <header className="mb-10">
+                            <h2 className="text-3xl font-black text-slate-800 mb-2">Kalkulator IPK</h2>
+                            <p className="text-slate-500">Pantau pencapaian akademikmu di ITERA dengan mudah dan cepat.</p>
+                        </header>
+                        <SummaryStats ipk={ipk} totalSKS={cumulativeSKS} />
+                        {semesters.map(s => (
+                            <SemesterCard
+                                key={s.id}
+                                semester={s}
+                                onUpdate={(u) => setSemesters(semesters.map(x => x.id === u.id ? u : x))}
+                                onDelete={() => setSemesters(semesters.length > 1 ? semesters.filter(x => x.id !== s.id) : semesters)}
+                            />
+                        ))}
+                        <button
+                            onClick={() => setSemesters([...semesters, { id: Date.now(), name: `Semester ${semesters.length + 1}`, courses: [{ id: Date.now()+1, name: '', sks: 2, grade: 'A' }] }])}
+                            className="mt-8 w-full py-4 bg-white border-2 border-slate-200 rounded-2xl text-slate-600 font-bold hover:text-[#8B0000] hover:border-[#8B0000] shadow-sm flex items-center justify-center space-x-2"
+                        >
+                            <span>+ Tambah Semester Baru</span>
+                        </button>
+                    </main>
+                    <footer className="bg-white border-t border-slate-100 py-8 mt-12 text-center text-slate-400 text-sm">
+                        © {new Date().getFullYear()} ITERA GPA Calculator.
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
 </html>

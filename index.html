@@ -1,203 +1,172 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IP & IPK Calculator</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
+    <header class="site-header">
         <div class="container">
-            <h1>📚 IP & IPK Calculator</h1>
-            <p>Kalkulator Akademik Mahasiswa</p>
+            <h1>IP & IPK Calculator</h1>
+            <p>Kalkulator akademik untuk semua prodi</p>
         </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="nav-tabs">
+    <nav class="site-nav">
         <div class="container">
-            <button class="tab-btn active" data-tab="calculator">🏠 Perhitungan</button>
-            <button class="tab-btn" data-tab="history">📜 Riwayat</button>
-            <button class="tab-btn" data-tab="settings">⚙️ Pengaturan</button>
+            <button class="tab-btn active" data-target="calc">Perhitungan</button>
+            <button class="tab-btn" data-target="history">Riwayat</button>
+            <button class="tab-btn" data-target="settings">Pengaturan</button>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content container">
-        <!-- Tab Calculator -->
-        <section id="calculator" class="tab-content active">
-            <div class="grid-layout">
-                <!-- Form Identitas -->
+    <main class="site-main container">
+        <!-- Perhitungan -->
+        <section id="calc" class="tab-panel active">
+            <div class="grid">
+                <!-- Identitas -->
                 <div class="card">
-                    <h2>📝 Identitas Mahasiswa</h2>
-                    <div class="form-grid">
+                    <h2>Identitas Mahasiswa</h2>
+                    <form id="student-form" class="form-grid" autocomplete="off">
                         <div class="form-group">
-                            <label for="nama">Nama Lengkap</label>
-                            <input type="text" id="nama" placeholder="Masukkan nama lengkap">
+                            <label for="nama">Nama</label>
+                            <input type="text" id="nama" required />
                         </div>
                         <div class="form-group">
                             <label for="nim">NIM</label>
-                            <input type="text" id="nim" placeholder="Masukkan NIM">
+                            <input type="text" id="nim" required />
                         </div>
                         <div class="form-group">
                             <label for="prodi">Program Studi</label>
-                            <input type="text" id="prodi" placeholder="Contoh: Teknik Informatika">
+                            <input type="text" id="prodi" required />
                         </div>
                         <div class="form-group">
-                            <label for="kampus">Nama Kampus</label>
-                            <input type="text" id="kampus" placeholder="Contoh: Universitas X">
+                            <label for="kampus">Kampus</label>
+                            <input type="text" id="kampus" required />
                         </div>
                         <div class="form-group">
                             <label for="semester">Semester</label>
-                            <input type="number" id="semester" min="1" max="14" placeholder="1-14">
+                            <input type="number" id="semester" min="1" max="14" required />
                         </div>
                         <div class="form-group">
                             <label for="tahun">Tahun Akademik</label>
-                            <input type="text" id="tahun" placeholder="Contoh: 2023/2024">
+                            <input type="text" id="tahun" placeholder="2023/2024" required />
                         </div>
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="catatan">Catatan (Opsional)</label>
-                        <textarea id="catatan" rows="2" placeholder="Tambahkan catatan..."></textarea>
-                    </div>
+                        <div class="form-group full-width">
+                            <label for="catatan">Catatan (opsional)</label>
+                            <textarea id="catatan" rows="2"></textarea>
+                        </div>
+                    </form>
                 </div>
 
-                <!-- Tabel Mata Kuliah -->
+                <!-- Mata Kuliah -->
                 <div class="card">
-                    <h2>📚 Daftar Mata Kuliah</h2>
-                    <div class="table-responsive">
-                        <table id="matkul-table">
+                    <h2>Daftar Mata Kuliah</h2>
+                    <div class="table-wrapper">
+                        <table>
                             <thead>
                                 <tr>
-                                    <th style="width: 5%;">No</th>
-                                    <th style="width: 30%;">Nama Mata Kuliah</th>
-                                    <th style="width: 10%;">SKS</th>
-                                    <th style="width: 15%;">Nilai</th>
-                                    <th style="width: 15%;">Bobot</th>
-                                    <th style="width: 15%;">Mutu</th>
-                                    <th style="width: 15%;">Aksi</th>
+                                    <th>No</th>
+                                    <th>Mata Kuliah</th>
+                                    <th>SKS</th>
+                                    <th>Nilai</th>
+                                    <th>Bobot</th>
+                                    <th>Mutu</th>
+                                    <th>Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody id="matkul-body">
-                                <!-- Dynamic rows will be added here -->
-                            </tbody>
+                            <tbody id="course-body"></tbody>
                         </table>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-primary" id="add-matkul">➕ Tambah Mata Kuliah</button>
-                        <button class="btn btn-secondary" id="reset-form">🔄 Reset Form</button>
+                        <button class="btn btn-primary" id="add-course">Tambah Mata Kuliah</button>
+                        <button class="btn btn-secondary" id="reset-form">Reset Form</button>
                     </div>
                 </div>
 
-                <!-- Hasil Perhitungan -->
-                <div class="card hasil-card">
-                    <h2>📊 Hasil Perhitungan</h2>
-                    <div class="hasil-grid">
-                        <div class="hasil-item">
+                <!-- Hasil -->
+                <div class="card result-card">
+                    <h2>Hasil Perhitungan</h2>
+                    <div class="result-grid">
+                        <div class="result-item">
                             <h3>Total SKS Semester</h3>
-                            <p id="total-sks-semester">0</p>
+                            <p id="total-sks-sem">0</p>
                         </div>
-                        <div class="hasil-item">
+                        <div class="result-item">
                             <h3>Total Mutu Semester</h3>
-                            <p id="total-mutu-semester">0.00</p>
+                            <p id="total-mutu-sem">0.00</p>
                         </div>
-                        <div class="hasil-item highlight">
+                        <div class="result-item highlight">
                             <h3>IP Semester</h3>
-                            <p id="ip-semester" class="score">0.00</p>
+                            <p id="ip-sem" class="score">0.00</p>
                         </div>
-                        <div class="hasil-item">
+                        <div class="result-item">
                             <h3>Total SKS Kumulatif</h3>
-                            <p id="total-sks-kumulatif">0</p>
+                            <p id="total-sks-kum">0</p>
                         </div>
-                        <div class="hasil-item">
+                        <div class="result-item">
                             <h3>Total Mutu Kumulatif</h3>
-                            <p id="total-mutu-kumulatif">0.00</p>
+                            <p id="total-mutu-kum">0.00</p>
                         </div>
-                        <div class="hasil-item highlight">
+                        <div class="result-item highlight">
                             <h3>IPK Akhir</h3>
                             <p id="ipk-akhir" class="score">0.00</p>
                         </div>
                     </div>
-                    <div class="form-kumulatif">
+                    <div class="kumulatif-section">
                         <h3>Data Kumulatif Sebelumnya</h3>
-                        <div class="form-row">
+                        <div class="grid">
                             <div class="form-group">
-                                <label for="sks-sebelumnya">Total SKS Sebelumnya</label>
-                                <input type="number" id="sks-sebelumnya" min="0" placeholder="0">
+                                <label for="prev-sks">Total SKS Sebelumnya</label>
+                                <input type="number" id="prev-sks" min="0" value="0" />
                             </div>
                             <div class="form-group">
-                                <label for="ipk-sebelumnya">IPK Sebelumnya</label>
-                                <input type="number" id="ipk-sebelumnya" min="0" max="4" step="0.01" placeholder="0.00">
+                                <label for="prev-ipk">IPK Sebelumnya</label>
+                                <input type="number" id="prev-ipk" min="0" max="4" step="0.01" value="0" />
                             </div>
                         </div>
                     </div>
                     <div class="btn-group">
-                        <button class="btn btn-success" id="calculate-btn">🧮 Hitung IP/IPK</button>
-                        <button class="btn btn-primary" id="save-btn">💾 Simpan Perhitungan</button>
-                        <button class="btn btn-info" id="export-btn">📄 Export/Print</button>
+                        <button class="btn btn-success" id="calc-btn">Hitung</button>
+                        <button class="btn btn-primary" id="save-btn">Simpan</button>
+                        <button class="btn btn-info" id="print-btn">Cetak</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Tab History -->
-        <section id="history" class="tab-content">
+        <!-- Riwayat -->
+        <section id="history" class="tab-panel">
             <div class="card">
-                <h2>📜 Riwayat Perhitungan</h2>
+                <h2>Riwayat Perhitungan</h2>
                 <div class="search-bar">
-                    <input type="text" id="search-history" placeholder="🔍 Cari berdasarkan nama, prodi, semester, atau kampus...">
+                    <input type="text" id="search-history" placeholder="Cari (nama, prodi, semester, kampus)" />
                 </div>
-                <div class="history-list" id="history-list">
-                    <!-- History items will be added here -->
-                    <div class="empty-state">
-                        <p>Belum ada data riwayat. Silakan lakukan perhitungan terlebih dahulu.</p>
-                    </div>
-                </div>
+                <div id="history-list" class="history-list"></div>
             </div>
         </section>
 
-        <!-- Tab Settings -->
-        <section id="settings" class="tab-content">
-            <div class="card settings-card">
-                <h2>⚙️ Pengaturan Bobot Nilai</h2>
-                <p style="margin-bottom: 20px; color: #666;">Atur bobot nilai sesuai standar kampus Anda. Default menggunakan skala 4.0.</p>
-                <div class="settings-grid" id="grades-settings">
-                    <!-- Grade settings will be generated here -->
-                </div>
+        <!-- Pengaturan -->
+        <section id="settings" class="tab-panel">
+            <div class="card">
+                <h2>Pengaturan Bobot Nilai</h2>
+                <div id="grade-settings" class="settings-grid"></div>
                 <div class="btn-group">
-                    <button class="btn btn-success" id="save-settings">💾 Simpan Pengaturan</button>
-                    <button class="btn btn-secondary" id="reset-settings">🔄 Reset ke Default</button>
+                    <button class="btn btn-success" id="save-grades">Simpan</button>
+                    <button class="btn btn-secondary" id="reset-grades">Reset</button>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
+    <footer class="site-footer">
         <div class="container">
-            <p>© 2024 IP & IPK Calculator. Dibuat untuk mahasiswa Indonesia.</p>
+            <p>© 2024 IP & IPK Calculator – Made for Indonesian students.</p>
         </div>
     </footer>
-
-    <!-- Modal for Editing History -->
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>✏️ Edit Data</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Apakah Anda ingin mengedit data ini?</p>
-                <div class="modal-actions">
-                    <button class="btn btn-primary" id="confirm-edit">Ya, Edit</button>
-                    <button class="btn btn-secondary" id="cancel-edit">Batal</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="script.js"></script>
 </body>

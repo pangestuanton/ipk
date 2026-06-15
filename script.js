@@ -1,460 +1,522 @@
-// Default Grades Configuration
-const defaultGrades = {
-    'A': 4.00,
-    'AB': 3.50,
-    'B': 3.00,
-    'BC': 2.50,
-    'C': 2.00,
-    'D': 1.00,
-    'E': 0.00
+/* -------------------------------------------------
+   IP & IPK Calculator – Vanilla JS
+   ------------------------------------------------- */
+
+// ----- Default grade weights -------------------------------------------------
+const DEFAULT_GRADES = {
+  A: 4.0,
+  AB: 3.5,
+  B: 3.0,
+  BC: 2.5,
+  C: 2.0,
+  D: 1.0,
+  E: 0.0,
 };
 
-// State
-let matkul = [];
-let grades = { ...defaultGrades };
-let currentId = null; // For editing
+let grades = { ...DEFAULT_GRADES };
+let editRecordId = null; // when editing a saved record
 
-// DOM Elements
-const elements = {
-    // Tabs
-    tabBtns: document.querySelectorAll('.tab-btn'),
-    tabContents: document.querySelectorAll('.tab-content'),
+// ----- DOM References -------------------------------------------------
+const dom = {
+  // Tabs
+  tabButtons: document.querySelectorAll('.tab-btn'),
+  tabPanels: document.querySelectorAll('.tab-panel'),
 
-    // Inputs
-    nama: document.getElementById('nama'),
-    nim: document.getElementById('nim'),
-    prodi: document.getElementById('prodi'),
-    kampus: document.getElementById('kampus'),
-    semester: document.getElementById('semester'),
-    tahun: document.getElementById('tahun'),
-    catatan: document.getElementById('catatan'),
-    sksSebelumnya: document.getElementById('sks-sebelumnya'),
-    ipkSebelumnya: document.getElementById('ipk-sebelumnya'),
+  // Student form
+  nama: document.getElementById('nama'),
+  nim: document.getElementById('nim'),
+  prodi: document.getElementById('prodi'),
+  kampus: document.getElementById('kampus'),
+  semester: document.getElementById('semester'),
+  tahun: document.getElementById('tahun'),
+  catatan: document.getElementById('catatan'),
 
-    // Table
-    matkulBody: document.getElementById('matkul-body'),
+  // Previous cumulative inputs
+  prevSks: document.getElementById('prev-sks'),
+  prevIpk: document.getElementById('prev-ipk'),
 
-    // Buttons
-    addMatkulBtn: document.getElementById('add-matkul'),
-    resetFormBtn: document.getElementById('reset-form'),
-    calculateBtn: document.getElementById('calculate-btn'),
-    saveBtn: document.getElementById('save-btn'),
-    exportBtn: document.getElementById('export-btn'),
+  // Course table
+  courseBody: document.getElementById('course-body'),
+  addCourseBtn: document.getElementById('add-course'),
+  resetFormBtn: document.getElementById('reset-form'),
 
-    // Results
-    totalSksSemester: document.getElementById('total-sks-semester'),
-    totalMutuSemester: document.getElementById('total-mutu-semester'),
-    ipSemester: document.getElementById('ip-semester'),
-    totalSksKumulatif: document.getElementById('total-sks-kumulatif'),
-    totalMutuKumulatif: document.getElementById('total-mutu-kumulatif'),
-    ipkAkhir: document.getElementById('ipk-akhir'),
+  // Calculation results
+  totalSksSem: document.getElementById('total-sks-sem'),
+  totalMutuSem: document.getElementById('total-mutu-sem'),
+  ipSem: document.getElementById('ip-sem'),
+  totalSksKum: document.getElementById('total-sks-kum'),
+  totalMutuKum: document.getElementById('total-mutu-kum'),
+  ipkAkhir: document.getElementById('ipk-akhir'),
 
-    // History
-    historyList: document.getElementById('history-list'),
-    searchHistory: document.getElementById('search-history'),
+  // Action buttons
+  calcBtn: document.getElementById('calc-btn'),
+  saveBtn: document.getElementById('save-btn'),
+  printBtn: document.getElementById('print-btn'),
 
-    // Settings
-    gradesSettings: document.getElementById('grades-settings'),
-    saveSettingsBtn: document.getElementById('save-settings'),
-    resetSettingsBtn: document.getElementById('reset-settings'),
+  // History
+  searchHistory: document.getElementById('search-history'),
+  historyList: document.getElementById('history-list'),
 
-    // Modal
-    editModal: document.getElementById('edit-modal'),
-    confirmEditBtn: document.getElementById('confirm-edit'),
-    cancelEditBtn: document.getElementById('cancel-edit'),
-    closeModalBtn: document.querySelector('.close-modal')
+  // Settings
+  gradeSettings: document.getElementById('grade-settings'),
+  saveGradesBtn: document.getElementById('save-grades'),
+  resetGradesBtn: document.getElementById('reset-grades'),
 };
 
-// --- Initialization ---
+// -------------------------------------------------
+// Initialization
+// -------------------------------------------------
 function init() {
-    loadSettings();
-    loadHistory();
-    addRow(); // Add first empty row
-    setupEventListeners();
+  // Load persisted grade config
+  const savedGrades = localStorage.getItem('ipk_grades');
+  if (savedGrades) grades = JSON.parse(savedGrades);
+
+  // Render UI parts
+  renderGradeSettings();
+  addCourseRow(); // start with one empty row
+  attachEventListeners();
+  loadHistory();
 }
 
-// --- Event Listeners ---
-function setupEventListeners() {
-    // Tabs
-    elements.tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    // Matkul Actions
-    elements.addMatkulBtn.addEventListener('click', () => addRow());
-    elements.resetFormBtn.addEventListener('click', resetForm);
-
-    // Calculation & Saving
-    elements.calculateBtn.addEventListener('click', calculate);
-    elements.saveBtn.addEventListener('click', saveCalculation);
-    elements.exportBtn.addEventListener('click', exportToPrint);
-
-    // History
-    elements.searchHistory.addEventListener('input', renderHistory);
-
-    // Settings
-    elements.saveSettingsBtn.addEventListener('click', saveSettings);
-    elements.resetSettingsBtn.addEventListener('click', resetSettings);
-
-    // Modal
-    elements.closeModalBtn.addEventListener('click', closeModal);
-    elements.cancelEditBtn.addEventListener('click', closeModal);
-    elements.confirmEditBtn.addEventListener('click', () => {
-        closeModal();
-        loadToForm(currentId);
-    });
-
-    // Auto-calculate on input change
-    const autoCalcInputs = [elements.sksSebelumnya, elements.ipkSebelumnya];
-    autoCalcInputs.forEach(input => input.addEventListener('input', calculate));
+// -------------------------------------------------
+// Tab handling
+// -------------------------------------------------
+function switchTab(target) {
+  dom.tabButtons.forEach(b => b.classList.toggle('active', b.dataset.target === target));
+  dom.tabPanels.forEach(p => p.classList.toggle('active', p.id === target));
 }
 
-// --- Tab Switching ---
-function switchTab(tabId) {
-    elements.tabBtns.forEach(btn => btn.classList.remove('active'));
-    elements.tabContents.forEach(content => content.classList.remove('active'));
-
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-
-    if (tabId === 'history') renderHistory();
-    if (tabId === 'settings') renderSettings();
+// -------------------------------------------------
+// Course table logic
+// -------------------------------------------------
+function createSelect(options, selected) {
+  const sel = document.createElement('select');
+  Object.keys(options).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = key;
+    if (key === selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
 }
 
-// --- Matkul Table Logic ---
-function addRow(data = null) {
-    const id = data ? data.id : Date.now();
-    const tr = document.createElement('tr');
-    tr.dataset.id = id;
+function addCourseRow(data = null) {
+  const tr = document.createElement('tr');
+  const rowId = data ? data.id : Date.now();
+  tr.dataset.id = rowId;
 
-    tr.innerHTML = `
-        <td class="row-num"></td>
-        <td><input type="text" class="mk-name" placeholder="Nama Mata Kuliah" value="${data ? data.name : ''}"></td>
-        <td><input type="number" class="mk-sks" min="1" value="${data ? data.sks : 1}"></td>
-        <td>
-            <select class="mk-grade">
-                ${Object.keys(grades).map(g => `<option value="${g}" ${data && data.grade === g ? 'selected' : ''}>${g}</option>`).join('')}
-            </select>
-        </td>
-        <td><input type="number" class="mk-bobot" step="0.01" value="${data ? data.bobot : grades[data?.grade || 'A'] || 4}"></td>
-        <td class="mk-mutu">0.00</td>
-        <td><button class="btn btn-danger btn-sm delete-row">Hapus</button></td>
-    `;
+  // No column – will be filled by updateRowNumbers()
+  const tdNo = document.createElement('td');
+  const tdName = document.createElement('td');
+  const tdSks = document.createElement('td');
+  const tdNilai = document.createElement('td');
+  const tdBobot = document.createElement('td');
+  const tdMutu = document.createElement('td');
+  const tdAksi = document.createElement('td');
 
-    elements.matkulBody.appendChild(tr);
-    updateRowNumbers();
-    calculateRowMutu(tr);
+  // Name input
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'course-name';
+  nameInput.placeholder = 'Mata Kuliah';
+  if (data) nameInput.value = data.name;
+  tdName.appendChild(nameInput);
 
-    // Add event listeners for this row
-    tr.querySelector('.mk-sks').addEventListener('input', () => calculateRowMutu(tr));
-    tr.querySelector('.mk-grade').addEventListener('change', (e) => {
-        const grade = e.target.value;
-        tr.querySelector('.mk-bobot').value = grades[grade];
-        calculateRowMutu(tr);
-    });
-    tr.querySelector('.mk-bobot').addEventListener('input', () => calculateRowMutu(tr));
-    tr.querySelector('.delete-row').addEventListener('click', () => {
-        tr.remove();
-        updateRowNumbers();
-        calculate();
-    });
-}
+  // SKS input
+  const sksInput = document.createElement('input');
+  sksInput.type = 'number';
+  sksInput.min = '1';
+  sksInput.className = 'course-sks';
+  sksInput.value = data ? data.sks : 1;
+  tdSks.appendChild(sksInput);
 
-function calculateRowMutu(tr) {
-    const sks = parseFloat(tr.querySelector('.mk-sks').value) || 0;
-    const bobot = parseFloat(tr.querySelector('.mk-bobot').value) || 0;
+  // Nilai (grade) select
+  const gradeSelect = createSelect(grades, data ? data.grade : 'A');
+  gradeSelect.className = 'course-grade';
+  tdNilai.appendChild(gradeSelect);
+
+  // Bobot input – auto‑filled from selected grade
+  const bobotInput = document.createElement('input');
+  bobotInput.type = 'number';
+  bobotInput.step = '0.01';
+  bobotInput.className = 'course-bobot';
+  const initBobot = data ? data.bobot : grades[gradeSelect.value];
+  bobotInput.value = initBobot;
+  tdBobot.appendChild(bobotInput);
+
+  // Mutu cell (read‑only)
+  const mutuSpan = document.createElement('span');
+  mutuSpan.className = 'course-mutu';
+  mutuSpan.textContent = '0.00';
+  tdMutu.appendChild(mutuSpan);
+
+  // Action – delete row
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'btn btn-danger btn-sm';
+  delBtn.textContent = 'Hapus';
+  tdAksi.appendChild(delBtn);
+
+  // Assemble row
+  tr.append(tdNo, tdName, tdSks, tdNilai, tdBobot, tdMutu, tdAksi);
+  dom.courseBody.appendChild(tr);
+
+  // ---- Event listeners for this row ----
+  // When SKS or Bobot changes, recalculate mutu
+  function updateMutu() {
+    const sks = parseFloat(sksInput.value) || 0;
+    const bobot = parseFloat(bobotInput.value) || 0;
     const mutu = (sks * bobot).toFixed(2);
-    tr.querySelector('.mk-mutu').textContent = mutu;
+    mutuSpan.textContent = mutu;
     calculate();
+  }
+
+  sksInput.addEventListener('input', updateMutu);
+  bobotInput.addEventListener('input', updateMutu);
+
+  // Grade change -> update bobot automatically
+  gradeSelect.addEventListener('change', () => {
+    bobotInput.value = grades[gradeSelect.value];
+    updateMutu();
+  });
+
+  // Delete row
+  delBtn.addEventListener('click', () => {
+    tr.remove();
+    updateRowNumbers();
+    calculate();
+  });
+
+  updateRowNumbers();
+  updateMutu(); // initial calculation for the new row
 }
 
 function updateRowNumbers() {
-    const rows = elements.matkulBody.querySelectorAll('tr');
-    rows.forEach((row, index) => {
-        row.querySelector('.row-num').textContent = index + 1;
-    });
+  const rows = dom.courseBody.querySelectorAll('tr');
+  rows.forEach((r, i) => {
+    r.children[0].textContent = i + 1; // first td is the number
+  });
 }
 
-// --- Calculation Logic ---
+// -------------------------------------------------
+// Calculation logic
+// -------------------------------------------------
 function calculate() {
-    let totalSksSemester = 0;
-    let totalMutuSemester = 0;
+  let totalSks = 0;
+  let totalMutu = 0;
 
-    const rows = elements.matkulBody.querySelectorAll('tr');
-    rows.forEach(row => {
-        const sks = parseFloat(row.querySelector('.mk-sks').value) || 0;
-        const bobot = parseFloat(row.querySelector('.mk-bobot').value) || 0;
-        totalSksSemester += sks;
-        totalMutuSemester += (sks * bobot);
-    });
+  const rows = dom.courseBody.querySelectorAll('tr');
+  rows.forEach(r => {
+    const sks = parseFloat(r.querySelector('.course-sks').value) || 0;
+    const bobot = parseFloat(r.querySelector('.course-bobot').value) || 0;
+    totalSks += sks;
+    totalMutu += sks * bobot;
+  });
 
-    const ipSemester = totalSksSemester > 0 ? totalMutuSemester / totalSksSemester : 0;
+  const ipSemester = totalSks > 0 ? totalMutu / totalSks : 0;
 
-    // Kumulatif
-    const sksSebelumnya = parseFloat(elements.sksSebelumnya.value) || 0;
-    const ipkSebelumnya = parseFloat(elements.ipkSebelumnya.value) || 0;
-    const mutuSebelumnya = sksSebelumnya * ipkSebelumnya;
+  // Cumulative data
+  const prevSks = parseFloat(dom.prevSks.value) || 0;
+  const prevIpk = parseFloat(dom.prevIpk.value) || 0;
+  const prevMutu = prevSks * prevIpk;
 
-    const totalSksKumulatif = sksSebelumnya + totalSksSemester;
-    const totalMutuKumulatif = mutuSebelumnya + totalMutuSemester;
-    const ipkAkhir = totalSksKumulatif > 0 ? totalMutuKumulatif / totalSksKumulatif : 0;
+  const totalSksKum = prevSks + totalSks;
+  const totalMutuKum = prevMutu + totalMutu;
+  const ipkAkhir = totalSksKum > 0 ? totalMutuKum / totalSksKum : 0;
 
-    // Update UI
-    elements.totalSksSemester.textContent = totalSksSemester;
-    elements.totalMutuSemester.textContent = totalMutuSemester.toFixed(2);
-    elements.ipSemester.textContent = ipSemester.toFixed(2);
-    elements.totalSksKumulatif.textContent = totalSksKumulatif;
-    elements.totalMutuKumulatif.textContent = totalMutuKumulatif.toFixed(2);
-    elements.ipkAkhir.textContent = ipkAkhir.toFixed(2);
+  // Update UI
+  dom.totalSksSem.textContent = totalSks;
+  dom.totalMutuSem.textContent = totalMutu.toFixed(2);
+  dom.ipSem.textContent = ipSemester.toFixed(2);
+  dom.totalSksKum.textContent = totalSksKum;
+  dom.totalMutuKum.textContent = totalMutuKum.toFixed(2);
+  dom.ipkAkhir.textContent = ipkAkhir.toFixed(2);
 }
 
-// --- Validation ---
-function validate() {
-    let isValid = true;
-    const inputs = [
-        { el: elements.nama, msg: 'Nama harus diisi' },
-        { el: elements.nim, msg: 'NIM harus diisi' },
-        { el: elements.prodi, msg: 'Program Studi harus diisi' },
-        { el: elements.kampus, msg: 'Kampus harus diisi' },
-        { el: elements.semester, msg: 'Semester harus diisi' },
-        { el: elements.tahun, msg: 'Tahun Akademik harus diisi' }
-    ];
-
-    inputs.forEach(item => {
-        if (!item.el.value.trim()) {
-            item.el.classList.add('error');
-            isValid = false;
-        } else {
-            item.el.classList.remove('error');
-        }
-    });
-
-    // Validasi Tabel
-    const rows = elements.matkulBody.querySelectorAll('tr');
-    if (rows.length === 0 || rows[0].querySelector('.mk-name').value === '') {
-        alert('Silakan tambahkan minimal 1 mata kuliah.');
-        return false;
-    }
-
-    rows.forEach(row => {
-        const name = row.querySelector('.mk-name').value.trim();
-        const sks = parseFloat(row.querySelector('.mk-sks').value);
-        if (!name) {
-            row.querySelector('.mk-name').classList.add('error');
-            isValid = false;
-        } else {
-            row.querySelector('.mk-name').classList.remove('error');
-        }
-        
-        if (!sks || sks < 1) {
-            row.querySelector('.mk-sks').classList.add('error');
-            isValid = false;
-        } else {
-            row.querySelector('.mk-sks').classList.remove('error');
-        }
-    });
-
-    if (!isValid) alert('Harap lengkapi data yang dibutuhkan.');
-    return isValid;
-}
-
-// --- Save / Load Data ---
-function saveCalculation() {
-    if (!validate()) return;
-
-    const data = {
-        id: currentId || Date.now(),
-        timestamp: new Date().toISOString(),
-        identity: {
-            nama: elements.nama.value,
-            nim: elements.nim.value,
-            prodi: elements.prodi.value,
-            kampus: elements.kampus.value,
-            semester: elements.semester.value,
-            tahun: elements.tahun.value,
-            catatan: elements.catatan.value
-        },
-        kumulatif: {
-            sksSebelumnya: parseFloat(elements.sksSebelumnya.value) || 0,
-            ipkSebelumnya: parseFloat(elements.ipkSebelumnya.value) || 0
-        },
-        matkul: Array.from(elements.matkulBody.querySelectorAll('tr')).map(row => ({
-            name: row.querySelector('.mk-name').value,
-            sks: parseFloat(row.querySelector('.mk-sks').value),
-            grade: row.querySelector('.mk-grade').value,
-            bobot: parseFloat(row.querySelector('.mk-bobot').value),
-            mutu: parseFloat(row.querySelector('.mk-mutu').textContent)
-        })),
-        result: {
-            ipSemester: parseFloat(elements.ipSemester.textContent),
-            ipkAkhir: parseFloat(elements.ipkAkhir.textContent)
-        }
-    };
-
-    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
-    
-    // Update jika edit, tambah jika baru
-    const index = history.findIndex(h => h.id === data.id);
-    if (index > -1) {
-        history[index] = data;
+// -------------------------------------------------
+// Validation
+// -------------------------------------------------
+function validateForm() {
+  let valid = true;
+  // Required student fields
+  [dom.nama, dom.nim, dom.prodi, dom.kampus, dom.semester, dom.tahun].forEach(inp => {
+    if (!inp.value.trim()) {
+      inp.classList.add('error');
+      valid = false;
     } else {
-        history.unshift(data); // Add to top
+      inp.classList.remove('error');
     }
+  });
 
-    localStorage.setItem('ipk_history', JSON.stringify(history));
-    
-    // Reset currentId after save
-    currentId = null;
-    
-    alert('Data berhasil disimpan!');
-    loadHistory(); // Refresh history view if open
-}
+  // At least one course with proper data
+  const rows = dom.courseBody.querySelectorAll('tr');
+  if (rows.length === 0) {
+    alert('Tambah minimal satu mata kuliah.');
+    return false;
+  }
 
-function loadToForm(id) {
-    currentId = id;
-    const history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
-    const data = history.find(h => h.id === id);
-    if (!data) return;
-
-    // Fill Identity
-    elements.nama.value = data.identity.nama;
-    elements.nim.value = data.identity.nim;
-    elements.prodi.value = data.identity.prodi;
-    elements.kampus.value = data.identity.kampus;
-    elements.semester.value = data.identity.semester;
-    elements.tahun.value = data.identity.tahun;
-    elements.catatan.value = data.identity.catatan;
-
-    // Fill Kumulatif
-    elements.sksSebelumnya.value = data.kumulatif.sksSebelumnya;
-    elements.ipkSebelumnya.value = data.kumulatif.ipkSebelumnya;
-
-    // Fill Matkul
-    elements.matkulBody.innerHTML = '';
-    data.matkul.forEach(mk => addRow(mk));
-
-    calculate();
-    switchTab('calculator');
-}
-
-function deleteHistory(id) {
-    if (!confirm('Yakin ingin menghapus data ini?')) return;
-    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
-    history = history.filter(h => h.id !== id);
-    localStorage.setItem('ipk_history', JSON.stringify(history));
-    renderHistory();
-}
-
-// --- History Rendering ---
-function renderHistory() {
-    const query = elements.searchHistory.value.toLowerCase();
-    let history = JSON.parse(localStorage.getItem('ipk_history') || '[]');
-
-    // Filter
-    history = history.filter(item => {
-        const { nama, prodi, semester, kampus } = item.identity;
-        return (
-            nama.toLowerCase().includes(query) ||
-            prodi.toLowerCase().includes(query) ||
-            semester.includes(query) ||
-            kampus.toLowerCase().includes(query)
-        );
-    });
-
-    elements.historyList.innerHTML = '';
-
-    if (history.length === 0) {
-        elements.historyList.innerHTML = '<div class="empty-state">Tidak ada data ditemukan.</div>';
-        return;
+  rows.forEach(r => {
+    const nameInp = r.querySelector('.course-name');
+    const sksInp = r.querySelector('.course-sks');
+    if (!nameInp.value.trim()) {
+      nameInp.classList.add('error');
+      valid = false;
+    } else {
+      nameInp.classList.remove('error');
     }
+    if (!sksInp.value || parseFloat(sksInp.value) < 1) {
+      sksInp.classList.add('error');
+      valid = false;
+    } else {
+      sksInp.classList.remove('error');
+    }
+  });
 
-    history.forEach(item => {
-        const date = new Date(item.timestamp).toLocaleDateString('id-ID');
-        const div = document.createElement('div');
-        div.className = 'history-item';
-        div.innerHTML = `
-            <div class="history-info">
-                <h4>${item.identity.nama} (${item.identity.nim})</h4>
-                <div class="history-meta">
-                    <span>📍 ${item.identity.kampus}</span>
-                    <span>🎓 ${item.identity.prodi}</span>
-                    <span>📅 Semester ${item.identity.semester}</span>
-                    <span>📅 ${item.identity.tahun}</span>
-                </div>
-                <div class="history-meta" style="margin-top: 5px;">
-                    <span><strong>IP:</strong> ${item.result.ipSemester.toFixed(2)}</span>
-                    <span><strong>IPK:</strong> ${item.result.ipkAkhir.toFixed(2)}</span>
-                    <span style="color: #888;">${date}</span>
-                </div>
-            </div>
-            <div class="history-actions">
-                <button class="btn btn-primary btn-sm" onclick="loadToForm(${item.id})">Buka</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteHistory(${item.id})">Hapus</button>
-            </div>
-        `;
-        elements.historyList.appendChild(div);
+  if (!valid) alert('Lengkapi semua data yang wajib.');
+  return valid;
+}
+
+// -------------------------------------------------
+// Persistence – LocalStorage
+// -------------------------------------------------
+function getHistory() {
+  const raw = localStorage.getItem('ipk_history');
+  return raw ? JSON.parse(raw) : [];
+}
+
+function setHistory(arr) {
+  localStorage.setItem('ipk_history', JSON.stringify(arr));
+}
+
+function saveRecord() {
+  if (!validateForm()) return;
+
+  const record = {
+    id: editRecordId || Date.now(),
+    timestamp: new Date().toISOString(),
+    student: {
+      nama: dom.nama.value,
+      nim: dom.nim.value,
+      prodi: dom.prodi.value,
+      kampus: dom.kampus.value,
+      semester: dom.semester.value,
+      tahun: dom.tahun.value,
+      catatan: dom.catatan.value,
+    },
+    prev: {
+      sks: parseFloat(dom.prevSks.value) || 0,
+      ipk: parseFloat(dom.prevIpk.value) || 0,
+    },
+    courses: Array.from(dom.courseBody.querySelectorAll('tr')).map(r => ({
+      name: r.querySelector('.course-name').value,
+      sks: parseFloat(r.querySelector('.course-sks').value),
+      grade: r.querySelector('.course-grade').value,
+      bobot: parseFloat(r.querySelector('.course-bobot').value),
+      mutu: parseFloat(r.querySelector('.course-mutu').textContent),
+    })),
+    result: {
+      ipSemester: parseFloat(dom.ipSem.textContent),
+      ipkAkhir: parseFloat(dom.ipkAkhir.textContent),
+    },
+  };
+
+  const history = getHistory();
+  const idx = history.findIndex(r => r.id === record.id);
+  if (idx > -1) history[idx] = record; // update
+  else history.unshift(record); // new record on top
+
+  setHistory(history);
+  editRecordId = null; // reset edit state
+  alert('Data berhasil disimpan.');
+  loadHistory();
+}
+
+function loadHistory(filter = '') {
+  const history = getHistory();
+  const term = filter.toLowerCase();
+  const filtered = history.filter(rec => {
+    const { nama, prodi, kampus, semester } = rec.student;
+    return (
+      nama.toLowerCase().includes(term) ||
+      prodi.toLowerCase().includes(term) ||
+      kampus.toLowerCase().includes(term) ||
+      String(semester).includes(term)
+    );
+  });
+
+  // Clear list
+  dom.historyList.innerHTML = '';
+  if (filtered.length === 0) {
+    dom.historyList.innerHTML = '<p class="empty-state">Tidak ada riwayat.</p>';
+    return;
+  }
+
+  filtered.forEach(rec => {
+    const card = document.createElement('div');
+    card.className = 'history-item';
+    card.innerHTML = `
+      <div class="history-info">
+        <h3>${rec.student.nama} (${rec.student.nim})</h3>
+        <div class="history-meta">
+          <span>Kampus: ${rec.student.kampus}</span>
+          <span>Prodi: ${rec.student.prodi}</span>
+          <span>Semester: ${rec.student.semester}</span>
+          <span>IP: ${rec.result.ipSemester.toFixed(2)}</span>
+          <span>IPK: ${rec.result.ipkAkhir.toFixed(2)}</span>
+          <span>${new Date(rec.timestamp).toLocaleDateString('id-ID')}</span>
+        </div>
+      </div>
+      <div class="history-actions">
+        <button class="btn btn-primary btn-sm" data-id="${rec.id}" data-action="load">Buka</button>
+        <button class="btn btn-danger btn-sm" data-id="${rec.id}" data-action="delete">Hapus</button>
+      </div>
+    `;
+    dom.historyList.appendChild(card);
+  });
+}
+
+function loadRecord(id) {
+  const history = getHistory();
+  const rec = history.find(r => r.id === id);
+  if (!rec) return;
+
+  // Populate student fields
+  dom.nama.value = rec.student.nama;
+  dom.nim.value = rec.student.nim;
+  dom.prodi.value = rec.student.prodi;
+  dom.kampus.value = rec.student.kampus;
+  dom.semester.value = rec.student.semester;
+  dom.tahun.value = rec.student.tahun;
+  dom.catatan.value = rec.student.catatan;
+
+  // Prev cumulative
+  dom.prevSks.value = rec.prev.sks;
+  dom.prevIpk.value = rec.prev.ipk;
+
+  // Courses – rebuild table
+  dom.courseBody.innerHTML = '';
+  rec.courses.forEach(c => addCourseRow(c));
+
+  calculate();
+  editRecordId = id; // set edit mode
+  switchTab('calc');
+}
+
+function deleteRecord(id) {
+  if (!confirm('Hapus data riwayat ini?')) return;
+  const history = getHistory().filter(r => r.id !== id);
+  setHistory(history);
+  loadHistory();
+}
+
+// -------------------------------------------------
+// Settings – Grade weights
+// -------------------------------------------------
+function renderGradeSettings() {
+  dom.gradeSettings.innerHTML = '';
+  Object.entries(grades).forEach(([grade, weight]) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'grade-setting';
+    wrapper.innerHTML = `
+      <label>${grade}</label>
+      <input type="number" step="0.01" data-grade="${grade}" value="${weight}">
+    `;
+    dom.gradeSettings.appendChild(wrapper);
+  });
+}
+
+function saveGrades() {
+  const inputs = dom.gradeSettings.querySelectorAll('input');
+  inputs.forEach(inp => {
+    const g = inp.dataset.grade;
+    const val = parseFloat(inp.value);
+    if (!isNaN(val)) grades[g] = val;
+  });
+  localStorage.setItem('ipk_grades', JSON.stringify(grades));
+  alert('Bobot nilai disimpan.');
+  // refresh grade dropdowns in existing rows
+  dom.courseBody.querySelectorAll('tr').forEach(row => {
+    const sel = row.querySelector('.course-grade');
+    const current = sel.value;
+    sel.innerHTML = '';
+    Object.keys(grades).forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = g;
+      if (g === current) opt.selected = true;
+      sel.appendChild(opt);
     });
+  });
 }
 
-// --- Settings Logic ---
-function renderSettings() {
-    elements.gradesSettings.innerHTML = '';
-    Object.entries(grades).forEach(([grade, weight]) => {
-        const div = document.createElement('div');
-        div.className = 'grade-setting';
-        div.innerHTML = `
-            <label>${grade}</label>
-            <input type="number" step="0.01" value="${weight}" data-grade="${grade}">
-        `;
-        elements.gradesSettings.appendChild(div);
-    });
+function resetGrades() {
+  grades = { ...DEFAULT_GRADES };
+  localStorage.setItem('ipk_grades', JSON.stringify(grades));
+  renderGradeSettings();
+  alert('Bobot nilai dikembalikan ke default.');
 }
 
-function saveSettings() {
-    const inputs = elements.gradesSettings.querySelectorAll('input');
-    inputs.forEach(input => {
-        grades[input.dataset.grade] = parseFloat(input.value) || 0;
-    });
-    localStorage.setItem('ipk_grades', JSON.stringify(grades));
-    alert('Pengaturan bobot nilai berhasil disimpan!');
-    
-    // Refresh table dropdowns
-    const rows = elements.matkulBody.querySelectorAll('tr');
-    rows.forEach(row => {
-        const select = row.querySelector('.mk-grade');
-        const currentVal = select.value;
-        select.innerHTML = Object.keys(grades).map(g => `<option value="${g}" ${g === currentVal ? 'selected' : ''}>${g}</option>`).join('');
-    });
+// -------------------------------------------------
+// Global event listeners
+// -------------------------------------------------
+function attachEventListeners() {
+  // Tab navigation
+  dom.tabButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.target)));
+
+  // Course actions
+  dom.addCourseBtn.addEventListener('click', () => addCourseRow());
+  dom.resetFormBtn.addEventListener('click', resetForm);
+
+  // Calculation & Save
+  dom.calcBtn.addEventListener('click', calculate);
+  dom.saveBtn.addEventListener('click', saveRecord);
+  dom.printBtn.addEventListener('click', () => window.print());
+
+  // History actions – delegation
+  dom.historyList.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.id, 10);
+    const action = btn.dataset.action;
+    if (action === 'load') loadRecord(id);
+    else if (action === 'delete') deleteRecord(id);
+  });
+
+  // History search
+  dom.searchHistory.addEventListener('input', e => loadHistory(e.target.value));
+
+  // Settings actions
+  dom.saveGradesBtn.addEventListener('click', saveGrades);
+  dom.resetGradesBtn.addEventListener('click', resetGrades);
 }
 
-function resetSettings() {
-    grades = { ...defaultGrades };
-    localStorage.setItem('ipk_grades', JSON.stringify(grades));
-    renderSettings();
-    alert('Reset ke default berhasil!');
-}
-
-function loadSettings() {
-    const saved = localStorage.getItem('ipk_grades');
-    if (saved) grades = JSON.parse(saved);
-}
-
-// --- Utilities ---
+// -------------------------------------------------
+// Reset form (clear all inputs)
+// -------------------------------------------------
 function resetForm() {
-    if (confirm('Yakin ingin mereset form? Data yang belum disimpan akan hilang.')) {
-        elements.matkulBody.innerHTML = '';
-        currentId = null;
-        document.querySelectorAll('input, textarea').forEach(el => el.value = '');
-        elements.sksSebelumnya.value = 0;
-        elements.ipkSebelumnya.value = 0;
-        addRow();
-        calculate();
-    }
+  if (!confirm('Reset semua data? Data yang belum disimpan akan hilang.')) return;
+  // student fields
+  [dom.nama, dom.nim, dom.prodi, dom.kampus, dom.semester, dom.tahun, dom.catatan].forEach(inp => (inp.value = ''));
+  dom.prevSks.value = '0';
+  dom.prevIpk.value = '0';
+
+  // courses
+  dom.courseBody.innerHTML = '';
+  addCourseRow();
+
+  // results
+  dom.totalSksSem.textContent = '0';
+  dom.totalMutuSem.textContent = '0.00';
+  dom.ipSem.textContent = '0.00';
+  dom.totalSksKum.textContent = '0';
+  dom.totalMutuKum.textContent = '0.00';
+  dom.ipkAkhir.textContent = '0.00';
+
+  editRecordId = null;
 }
 
-function exportToPrint() {
-    window.print();
-}
-
-// Start App
+// -------------------------------------------------
+// Start app
+// -------------------------------------------------
 init();
